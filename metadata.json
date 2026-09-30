@@ -1,0 +1,7 @@
+{
+  "name": "Land Stack — GIS Digital Public Infrastructure (SIH26014)",
+  "description": "An Integrated GIS-based Digital Public Infrastructure for Land Governance with ULPIN search, cadastral layers, tamper-evident audit ledger, and cross-departmental workflow.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
