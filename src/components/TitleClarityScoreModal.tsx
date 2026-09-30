@@ -21,7 +21,8 @@ export const TitleClarityScoreModal: React.FC<TitleClarityScoreModalProps> = ({
   // Compute 0-100 Title Clarity Score mathematically
   let tenureScore = 35; // Chain of title
   const regYear = new Date(parcel.ownership.registrationDate).getFullYear();
-  if (2024 - regYear >= 25) {
+  const currentYear = new Date().getFullYear();
+  if (currentYear - regYear >= 25) {
     tenureScore = 20; // deduction for stale title
   }
 

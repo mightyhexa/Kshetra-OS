@@ -114,7 +114,6 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
             <button
               onClick={() => onOpenChangeDetection(parcel)}
               className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 text-[11px] font-semibold rounded-md border border-slate-200 shadow-2xs whitespace-nowrap transition-colors"
-              title="Compare 2021 vs 2024 satellite imagery"
             >
               <span>🛰️ Satellite AI Change</span>
             </button>

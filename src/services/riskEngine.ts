@@ -57,7 +57,7 @@ export function computeParcelFlags(parcel: Parcel): ParcelRiskFlag[] {
 
   // Rule 4: Stale Registration (Ancestral / Un-mutated Record older than 25 years without recent transaction)
   const regYear = new Date(parcel.ownership.registrationDate).getFullYear();
-  const currentYear = 2024;
+  const currentYear = new Date().getFullYear(); // Dynamic calculation for current year (2026)
   if (currentYear - regYear >= 25 && parcel.ownership.ownershipType !== 'Government') {
     flags.push({
       code: 'STALE_REGISTRATION',

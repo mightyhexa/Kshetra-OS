@@ -122,7 +122,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onOpenTech
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-xs font-semibold text-[#0B3D6E]">
                 <ShieldCheck className="w-4 h-4 text-[#0B3D6E]" />
-                <span>Smart India Hackathon 2024 — Problem Statement SIH26014</span>
+                <span>Smart India Hackathon 2026 — Problem Statement SIH26014</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight font-cinzel">
                 Unified Cadastral Operating System for Modern Land Governance
@@ -441,7 +441,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onOpenTech
       <footer role="contentinfo" className="bg-white border-t border-slate-200 py-3 px-4 text-center text-xs text-slate-700 font-medium">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span className="text-slate-700 font-medium">
-            KSHETRA OS — Designed for Smart India Hackathon PS26014 • Ministry of Rural Development
+            KSHETRA OS — Designed for Smart India Hackathon 2026 (PS26014) • Ministry of Rural Development
           </span>
           <span className="font-mono text-[11px] text-slate-700 font-semibold">
             Open Standards: OGC GeoJSON • EPSG:4326 • SHA-256 Ledger

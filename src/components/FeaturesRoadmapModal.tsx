@@ -204,7 +204,7 @@ export const FeaturesRoadmapModal: React.FC<FeaturesRoadmapModalProps> = ({
                     </span>
                   </div>
                   <p className="text-slate-600 text-[11px]">
-                    Allows evaluators to slide between 2020 and 2024 satellite imagery orthophotos over a parcel to automatically detect unauthorized construction or boundary encroachment.
+                    Allows evaluators to slide between 2020 and 2026 satellite imagery orthophotos over a parcel to automatically detect unauthorized construction or boundary encroachment.
                   </p>
                 </div>
 

@@ -37,7 +37,7 @@ export const TemporalChangeDetectionModal: React.FC<TemporalChangeDetectionModal
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Multi-temporal satellite pass comparison (2021 Baseline vs 2024 Current) over ULPIN {parcel.ulpin}.
+                Multi-temporal satellite pass comparison (2021 Baseline vs 2026 Current) over ULPIN {parcel.ulpin}.
               </p>
             </div>
           </div>
@@ -53,7 +53,7 @@ export const TemporalChangeDetectionModal: React.FC<TemporalChangeDetectionModal
             <span>AI Built-up Footprint Anomaly Detected (+38.4% Structural Expansion)</span>
           </div>
           <p className="text-amber-800 text-[11px] leading-relaxed">
-            Temporal change analysis shows 540 m² of unauthorized built-up area constructed between March 2021 and January 2024. Boundary buffer encroaches 8.2 meters into the municipal storm-water setback.
+            Temporal change analysis shows 540 m² of unauthorized built-up area constructed between March 2021 and January 2026. Boundary buffer encroaches 8.2 meters into the municipal storm-water setback.
           </p>
         </div>
 
@@ -66,7 +66,7 @@ export const TemporalChangeDetectionModal: React.FC<TemporalChangeDetectionModal
             </div>
             <div className="flex items-center gap-1.5 text-emerald-800">
               <Calendar className="w-3.5 h-3.5" />
-              <span>EOS-04 High-Res Orthophoto (Jan 2024)</span>
+              <span>EOS-04 High-Res Orthophoto (Jan 2026)</span>
             </div>
           </div>
 
@@ -82,7 +82,7 @@ export const TemporalChangeDetectionModal: React.FC<TemporalChangeDetectionModal
               </div>
             </div>
 
-            {/* 2024 Layer (Right Clipped Overlay) */}
+            {/* 2026 Layer (Right Clipped Overlay) */}
             <div
               className="absolute inset-y-0 right-0 bg-linear-to-br from-slate-800 to-slate-950 border-l-2 border-white flex flex-col items-center justify-center text-white transition-none overflow-hidden"
               style={{ width: `${100 - sliderPosition}%` }}
@@ -95,7 +95,7 @@ export const TemporalChangeDetectionModal: React.FC<TemporalChangeDetectionModal
                   {/* Built-up Footprint Highlight */}
                   {highlightChanges && (
                     <div className="absolute top-4 left-4 right-12 bottom-8 bg-rose-500/40 border-2 border-rose-500 rounded flex items-center justify-center font-bold text-xs text-rose-200">
-                      [2024 AI Flag: Unauthorized Commercial Footprint]
+                      [2026 AI Flag: Unauthorized Commercial Footprint]
                     </div>
                   )}
                 </div>
@@ -135,7 +135,7 @@ export const TemporalChangeDetectionModal: React.FC<TemporalChangeDetectionModal
             <span className="font-bold text-emerald-700">76.4% NDVI (Permitted)</span>
           </div>
           <div>
-            <span className="text-slate-400 block text-[10px] font-sans">2024 Impervious Built-up</span>
+            <span className="text-slate-400 block text-[10px] font-sans">2026 Impervious Built-up</span>
             <span className="font-bold text-rose-600">62.8% (+38.4% Structural)</span>
           </div>
           <div>

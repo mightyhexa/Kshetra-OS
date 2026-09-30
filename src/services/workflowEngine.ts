@@ -58,7 +58,7 @@ class WorkflowEngine {
           actionedByRole: 'officer',
           actionedByName: 'SRO Shivajinagar Verification Node',
           timestamp: '2024-06-04T16:15:00.000Z',
-          remarks: 'E-Stamps authenticity confirmed; Revenue dues clear (BBMP SAS Clearance 2024).'
+          remarks: 'E-Stamps authenticity confirmed; Revenue dues clear (BBMP SAS Clearance 2026).'
         }
       ]
     };
@@ -83,7 +83,7 @@ class WorkflowEngine {
           actionedByRole: 'citizen',
           actionedByName: 'Venkata Satyanarayana Raju',
           timestamp: '2024-05-18T09:15:00.000Z',
-          remarks: 'Tatkal request for 30-year Encumbrance Certificate (1994-2024).'
+          remarks: 'Tatkal request for 30-year Encumbrance Certificate (1996-2026).'
         },
         {
           id: 'TR-12',
@@ -186,7 +186,8 @@ class WorkflowEngine {
     actorId: string;
   }): Promise<ServiceRequest> {
     const nextSeq = this.requests.size + 1;
-    const id = `REQ-2024-${String(nextSeq).padStart(4, '0')}`;
+    const currentYear = new Date().getFullYear();
+    const id = `REQ-${currentYear}-${String(nextSeq).padStart(4, '0')}`;
     const timestamp = new Date().toISOString();
 
     const transition: WorkflowTransition = {

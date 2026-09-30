@@ -171,7 +171,7 @@ export const DigitalCertificateModal: React.FC<DigitalCertificateModalProps> = (
                 ) : (
                   <p className="text-emerald-800 font-semibold text-xs mt-0.5 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline" />
-                    Clean Title: Nil Encumbrances or Bank Mortgages found during search period (1994–2024).
+                    Clean Title: Nil Encumbrances or Bank Mortgages found during search period (1996–2026).
                   </p>
                 )}
               </div>
