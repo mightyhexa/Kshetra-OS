@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Parcel, UserRole } from '../types';
-import { IndianEmblemLogo } from './IndianEmblemLogo';
+import { KshetraMark } from './KshetraMark';
 import { computeParcelFlags } from '../services/riskEngine';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -165,11 +165,11 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
             <div className="relative z-10 space-y-4">
               {/* 2. THREE-COLUMN AUTHORITATIVE HEADER */}
               <div className="grid grid-cols-12 gap-3 items-center pb-3 border-b-2 border-[#0f172a]">
-                {/* Left: National Emblem / Logo */}
+                {/* Left: KSHETRA Cadastral Symbol */}
                 <div className="col-span-2 flex flex-col items-center justify-center text-center">
-                  <IndianEmblemLogo size="md" variant="navy" />
-                  <span className="text-[9px] font-bold text-slate-600 tracking-wider mt-1 uppercase font-rajdhani">
-                    सत्यमेव जयते
+                  <KshetraMark size={40} className="w-10 h-10" />
+                  <span className="text-[9px] font-bold text-[#0B3D6E] tracking-wider mt-1 uppercase font-rajdhani">
+                    KSHETRA DPI
                   </span>
                 </div>
 
@@ -305,7 +305,7 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
                     Taluk / Sub-District
                   </div>
                   <div className="bg-white p-2 font-medium text-slate-900 border-r border-slate-200">
-                    {parcel.subDistrictTaluk}
+                    {parcel.subDistrictTaluk || parcel.subDistrict}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-r border-slate-200">
@@ -347,7 +347,7 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
                     Conveyance Deed No.
                   </div>
                   <div className="bg-white p-2 font-mono font-bold text-slate-900 border-r border-slate-200">
-                    {parcel.ownership.documentNumber}
+                    {parcel.ownership.documentNumber || parcel.ownership.registrationNumber}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-r border-slate-200">
@@ -359,7 +359,7 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
                 </div>
               </div>
 
-              {/* 6. SECTION 3: MASTER PLAN ZONING & ENCUMBRANCE SEARCH */}
+              {/* 6. SECTION 3: MASTER PLAN ZONING & ENCUMBRANCES */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between pb-0.5 border-b border-slate-300">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#0f172a] font-rajdhani">
@@ -387,7 +387,7 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
                     Building Permission
                   </div>
                   <div className="bg-white p-2 text-slate-900 border-r border-slate-200">
-                    {parcel.zoning.buildingPermissionStatus} (Max Height: {parcel.zoning.maxBuildingHeightMeters}m)
+                    {parcel.zoning.buildingPermissionStatus} (Max Height: {parcel.zoning.maxBuildingHeightMeters || 15}m)
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-r border-slate-200">
@@ -415,7 +415,7 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#0f172a] font-rajdhani">
                     4. Municipal Fiscal Demand & Public Utilities (Additional Layer)
                   </h3>
-                  <span className="text-[10px] font-mono text-slate-500">Discom: {parcel.utilities.electricityDiscom}</span>
+                  <span className="text-[10px] font-mono text-slate-500">Tax Status: {parcel.tax.taxStatus}</span>
                 </div>
 
                 <div className="grid grid-cols-4 border border-slate-300 rounded-md overflow-hidden text-xs">
@@ -438,14 +438,14 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
                     Electricity Consumer ID
                   </div>
                   <div className="bg-white p-2 font-mono text-slate-900 border-r border-slate-200">
-                    {parcel.utilities.electricityConsumerId}
+                    {parcel.tax.electricityConsumerNo || 'DISCOM-BULK-01'}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-r border-slate-200">
                     Road Access ROW Width
                   </div>
                   <div className="bg-white p-2 font-medium text-slate-900">
-                    {parcel.utilities.roadAccessWidthMeters} Meters Right-of-Way
+                    Public Arterial Right-of-Way
                   </div>
                 </div>
               </div>

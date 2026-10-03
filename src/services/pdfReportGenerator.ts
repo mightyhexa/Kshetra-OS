@@ -244,8 +244,8 @@ export function generateParcelPdfReport(parcel: Parcel, userRole: UserRole = 'ci
     [
       ['Survey / Khasra No.', parcel.surveyNumber, 'Registered Extent', `${parcel.areaSqm} sqm (${parcel.areaAcres} Ac)`],
       ['State', parcel.state, 'District', parcel.district],
-      ['Taluk / Sub-District', parcel.subDistrictTaluk, 'Village / Ward', parcel.villageWard],
-      ['Centroid Coordinates', `${parcel.centroidLat.toFixed(5)}°N, ${parcel.centroidLon.toFixed(5)}°E`, 'Pincode', parcel.pincode]
+      ['Taluk / Sub-District', parcel.subDistrictTaluk || parcel.subDistrict, 'Village / Ward', parcel.villageWard],
+      ['Centroid Coordinates', `${parcel.centroidLat.toFixed(5)}°N, ${parcel.centroidLon.toFixed(5)}°E`, 'Pincode', parcel.pincode || parcel.pinCode]
     ]
   );
 
@@ -259,8 +259,8 @@ export function generateParcelPdfReport(parcel: Parcel, userRole: UserRole = 'ci
     `Tenure: ${parcel.ownership.ownershipType}`,
     [
       ['Primary Title Holder', parcel.ownership.ownerName, 'Co-Sharers / Heirs', coOwnersStr],
-      ['Conveyance Deed No.', parcel.ownership.documentNumber, 'Registration Date', parcel.ownership.registrationDate],
-      ['Sub-Registrar Office', parcel.ownership.subRegistrarOffice, 'Registration Status', parcel.ownership.registrationStatus]
+      ['Conveyance Deed No.', parcel.ownership.documentNumber || parcel.ownership.registrationNumber, 'Registration Date', parcel.ownership.registrationDate],
+      ['Sub-Registrar Office', parcel.ownership.subRegistrarOffice, 'Registration Status', parcel.ownership.registrationStatus || 'Registered & Mutated']
     ]
   );
 
@@ -276,20 +276,19 @@ export function generateParcelPdfReport(parcel: Parcel, userRole: UserRole = 'ci
     `FAR: ${parcel.zoning.floorAreaRatioAllowed}`,
     [
       ['Master Plan Zoning', parcel.zoning.masterPlanClassification, 'Registered Land Use', parcel.zoning.registeredLandUse],
-      ['Building Clearance', parcel.zoning.buildingPermissionStatus, 'Max Allowed Height', `${parcel.zoning.maxBuildingHeightMeters} Meters`],
+      ['Building Clearance', parcel.zoning.buildingPermissionStatus, 'Max Allowed Height', `${parcel.zoning.maxBuildingHeightMeters || 15} Meters`],
       ['Encumbrance Search', encumbranceVal, 'Dispute Docket', parcel.encumbrance.courtCaseNumber || 'None (No Civil Suits)']
     ]
   );
 
   // 8. SECTION 4: MUNICIPAL FISCAL DEMAND & PUBLIC UTILITIES
-  // BUG FIX APPLIED: Tax Assessment PID has its own bounded cell with strict maxWidth
   drawGridSection(
     '4. Municipal Fiscal Demand & Public Utilities (Additional Layer)',
-    `DISCOM: ${parcel.utilities.electricityDiscom}`,
+    `Tax Status: ${parcel.tax.taxStatus}`,
     [
       ['Tax Assessment PID', parcel.tax.propertyTaxAssessmentNo, 'Tax Status & Demand', `${parcel.tax.taxStatus} (₹${parcel.tax.annualTaxDemandInr.toLocaleString('en-IN')})`],
-      ['Power Consumer ID', parcel.utilities.electricityConsumerId, 'Road Access ROW', `${parcel.utilities.roadAccessWidthMeters} Meters Right-of-Way`],
-      ['Water Board ID', parcel.utilities.waterSupplyConnectionId || 'Pending Connection', 'Last Assessed Value', `INR ${parcel.tax.lastAssessedValueInr.toLocaleString('en-IN')}`]
+      ['Power Consumer ID', parcel.tax.electricityConsumerNo || 'DISCOM-BULK', 'Road Access ROW', 'Public Arterial Right-of-Way'],
+      ['Water Board ID', parcel.tax.waterConnectionId || 'Municipal Bulk Supply', 'Last Assessed Value', parcel.tax.lastAssessedValueInr ? `INR ${parcel.tax.lastAssessedValueInr.toLocaleString('en-IN')}` : 'Standard Valuation']
     ]
   );
 
@@ -380,3 +379,25 @@ export function generateParcelPdfReport(parcel: Parcel, userRole: UserRole = 'ci
   // Save the PDF directly to client
   doc.save(`KSHETRA_OS_Dossier_${parcel.ulpin}.pdf`);
 }
+
+/**
+ * Downloads authoritative server-issued Cadastral Dossier PDF with PDFKit and SHA-256 seal.
+ * Falls back to client-side jsPDF if server route is unreachable.
+ */
+export async function downloadServerDossierPdf(parcel: Parcel, userRole: UserRole = 'citizen'): Promise<void> {
+  try {
+    const { apiClient } = await import('./apiClient');
+    const blob = await apiClient.downloadDossierPdf(parcel.ulpin);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `KSHETRA_Cadastral_Dossier_${parcel.displayUlpin || parcel.ulpin}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch {
+    generateParcelPdfReport(parcel, userRole);
+  }
+}
+

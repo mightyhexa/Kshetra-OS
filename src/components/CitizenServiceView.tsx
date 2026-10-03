@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { workflowEngine } from '../services/workflowEngine';
-import { MOCK_PARCELS } from '../data/mockParcels';
+import { apiClient } from '../services/apiClient';
 import { Parcel, ServiceRequest, ServiceRequestStatus, ServiceRequestType } from '../types';
 import { 
   FileText, 
@@ -38,40 +37,65 @@ export const CitizenServiceView: React.FC<CitizenServiceViewProps> = ({
   onOpenDossier
 }) => {
   const { currentUser, currentRole } = useAuth();
-  const [requests, setRequests] = useState<ServiceRequest[]>(() => workflowEngine.getAllRequests());
-  const [selectedRequestId, setSelectedRequestId] = useState<string>(requests[0]?.id || '');
+  const [parcels, setParcels] = useState<Parcel[]>([]);
+  const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [selectedRequestId, setSelectedRequestId] = useState<string>('');
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
 
   // Form State for New Service Request
-  const [targetUlpin, setTargetUlpin] = useState(preselectedUlpin || MOCK_PARCELS[0].ulpin);
+  const [targetUlpin, setTargetUlpin] = useState(preselectedUlpin || '');
   const [requestType, setRequestType] = useState<ServiceRequestType>('MUTATION_OF_TITLE');
   const [urgency, setUrgency] = useState<'Normal' | 'Tatkal'>('Normal');
   const [applicantName, setApplicantName] = useState(currentUser.fullName);
-  const [applicantAadhaar, setApplicantAadhaar] = useState(currentUser.aadhaarMasked);
+  const [applicantAadhaar, setApplicantAadhaar] = useState(currentUser.aadhaarMasked || 'XXXX-XXXX-9182');
   const [supportingDoc, setSupportingDoc] = useState('Registered_Conveyance_Deed.pdf');
+  const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
   const [submitSuccessNotice, setSubmitSuccessNotice] = useState<string | null>(null);
+
+  const loadData = async () => {
+    try {
+      const [parcelsRes, reqs] = await Promise.all([
+        apiClient.getParcels({ limit: 100 }),
+        apiClient.getRequests()
+      ]);
+      setParcels(parcelsRes.items);
+      setRequests(reqs);
+      if (reqs.length > 0 && !selectedRequestId) {
+        setSelectedRequestId(reqs[0].id);
+      }
+      if (parcelsRes.items.length > 0 && !targetUlpin) {
+        setTargetUlpin(preselectedUlpin || parcelsRes.items[0].ulpin);
+      }
+    } catch (err) {
+      console.error('Failed to load citizen data:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [preselectedUlpin]);
 
   const selectedRequest = requests.find(r => r.id === selectedRequestId);
 
   const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newReq = await workflowEngine.submitRequest({
-      parcelUlpin: targetUlpin,
-      applicantName,
-      applicantAadhaarMasked: applicantAadhaar,
-      requestType,
-      urgency,
-      supportingDocName: supportingDoc,
-      actorRole: currentRole,
-      actorId: currentUser.id
-    });
-
-    const updated = workflowEngine.getAllRequests();
-    setRequests(updated);
-    setSelectedRequestId(newReq.id);
-    setIsSubmitModalOpen(false);
-    setSubmitSuccessNotice(`Application ${newReq.id} submitted successfully and committed to the SHA-256 ledger!`);
-    setTimeout(() => setSubmitSuccessNotice(null), 6000);
+    try {
+      const newReq = await apiClient.createRequest({
+        parcelUlpin: targetUlpin,
+        applicantName,
+        applicantAadhaarMasked: applicantAadhaar || currentUser.aadhaarMasked || 'XXXX-XXXX-9182',
+        requestType,
+        urgency,
+        supportingDocName: supportingDoc
+      });
+      await loadData();
+      setSelectedRequestId(newReq.id);
+      setIsSubmitModalOpen(false);
+      setSubmitSuccessNotice(`Application ${newReq.id} submitted successfully and committed to the SHA-256 ledger!`);
+      setTimeout(() => setSubmitSuccessNotice(null), 8000);
+    } catch (err: any) {
+      console.error('Failed to submit request:', err);
+    }
   };
 
   const getStepStatus = (stepKey: ServiceRequestStatus, currentStatus: ServiceRequestStatus) => {
@@ -216,7 +240,7 @@ export const CitizenServiceView: React.FC<CitizenServiceViewProps> = ({
                     {onOpenDossier && (
                       <button
                         onClick={() => {
-                          const found = MOCK_PARCELS.find(p => p.ulpin === selectedRequest.parcelUlpin);
+                          const found = parcels.find(p => p.ulpin === selectedRequest.parcelUlpin);
                           if (found) onOpenDossier(found);
                         }}
                         className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-white rounded text-[10px] font-semibold inline-flex items-center gap-1 shadow-2xs"
@@ -358,7 +382,7 @@ export const CitizenServiceView: React.FC<CitizenServiceViewProps> = ({
                   onChange={(e) => setTargetUlpin(e.target.value)}
                   className="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono text-xs focus:ring-1 focus:ring-[#0B3D6E]"
                 >
-                  {MOCK_PARCELS.map((p) => (
+                  {parcels.map((p) => (
                     <option key={p.ulpin} value={p.ulpin}>
                       {p.ulpin} — {p.district} (Survey {p.surveyNumber}, {p.ownership.ownerName})
                     </option>

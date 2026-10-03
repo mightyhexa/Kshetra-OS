@@ -15,6 +15,8 @@ export function computeParcelFlags(parcel: Parcel): ParcelRiskFlag[] {
       code: 'DISPUTE_ACTIVE',
       severity: 'high',
       title: 'Active Dispute / Litigation Flag',
+      ruleId: 'RULE-DISP-01',
+      responsibleOffice: 'Civil District Court / Sub-Divisional Magistrate (SDM)',
       reason: parcel.encumbrance.disputeReason 
         ? `${parcel.encumbrance.disputeReason}${parcel.encumbrance.courtCaseNumber ? ` [Case: ${parcel.encumbrance.courtCaseNumber}]` : ''}`
         : 'Active litigation or adverse claim registered against this parcel.',
@@ -33,6 +35,8 @@ export function computeParcelFlags(parcel: Parcel): ParcelRiskFlag[] {
       code: 'ZONING_MISMATCH',
       severity: 'high',
       title: 'Master Plan Zoning Inconsistency',
+      ruleId: 'RULE-ZONE-02',
+      responsibleOffice: 'Urban Development Authority / Town Planning Directorate',
       reason: `Zoning classification is designated as "${parcel.zoning.masterPlanClassification}", but the parcel was registered for "${parcel.zoning.registeredLandUse}" use. Potential non-conforming occupancy or CLU conversion violation.`,
       triggeredFields: [
         `zoning.masterPlanClassification ("${parcel.zoning.masterPlanClassification}")`,
@@ -47,6 +51,8 @@ export function computeParcelFlags(parcel: Parcel): ParcelRiskFlag[] {
       code: 'BUILDING_VIOLATION',
       severity: 'medium',
       title: 'Municipal Building Code Violation',
+      ruleId: 'RULE-BLDG-03',
+      responsibleOffice: 'Municipal Corporation Town Planning Cell',
       reason: 'Municipal planning authority has issued an active notice for FAR violation or unapproved structural development.',
       triggeredFields: [
         `zoning.buildingPermissionStatus ("${parcel.zoning.buildingPermissionStatus}")`,
@@ -63,6 +69,8 @@ export function computeParcelFlags(parcel: Parcel): ParcelRiskFlag[] {
       code: 'STALE_REGISTRATION',
       severity: 'low',
       title: 'Legacy Title / Stale Cadastral Registry',
+      ruleId: 'RULE-TITL-04',
+      responsibleOffice: 'Tahsildar Revenue Circle Office',
       reason: `Last formal conveyance was registered ${currentYear - regYear} years ago (${parcel.ownership.registrationDate}). High likelihood of unrecorded successions, partition deeds, or legal-heir claims.`,
       triggeredFields: [
         `ownership.registrationDate ("${parcel.ownership.registrationDate}")`,
@@ -78,6 +86,8 @@ export function computeParcelFlags(parcel: Parcel): ParcelRiskFlag[] {
       code: 'TAX_DEFAULT',
       severity: 'medium',
       title: 'Property Tax Arrears',
+      ruleId: 'RULE-FISC-05',
+      responsibleOffice: 'Municipal Revenue & Assessment Section',
       reason: `Municipal property tax is outstanding. Accumulated demand: ₹${parcel.tax.annualTaxDemandInr.toLocaleString('en-IN')}.`,
       triggeredFields: [
         `tax.taxStatus ("${parcel.tax.taxStatus}")`,

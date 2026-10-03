@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Parcel, ParcelRiskFlag, UserRole } from '../types';
 import { computeParcelFlags } from '../services/riskEngine';
-import { generateParcelPdfReport } from '../services/pdfReportGenerator';
+import { generateParcelPdfReport, downloadServerDossierPdf } from '../services/pdfReportGenerator';
 import { 
   X, 
   ShieldAlert, 
@@ -76,7 +76,7 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
               Survey No. {parcel.surveyNumber} • {parcel.villageWard}
             </h2>
             <p className="text-xs text-slate-500">
-              {parcel.subDistrictTaluk}, {parcel.district}, {parcel.state} — {parcel.pincode}
+              {parcel.subDistrictTaluk || parcel.subDistrict}, {parcel.district}, {parcel.state} — {parcel.pincode || parcel.pinCode}
             </p>
           </div>
           <button
@@ -124,7 +124,7 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
               onClick={() => onOpenSubdivision(parcel)}
               className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 text-[11px] font-semibold rounded-md border border-slate-200 shadow-2xs whitespace-nowrap transition-colors"
             >
-              <span>✂️ Partition Survey</span>
+              <span>Partition Survey</span>
             </button>
           )}
 
@@ -132,8 +132,10 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
             <button
               onClick={() => onOpenDossier(parcel)}
               className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-semibold rounded-md shadow-2xs whitespace-nowrap transition-colors"
+              title="Preview complete NSDI Government Dossier"
             >
-              <span>📋 NSDI Dossier</span>
+              <FileText className="w-3 h-3 text-blue-300" />
+              <span>Preview dossier</span>
             </button>
           )}
 
@@ -141,22 +143,21 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
             onClick={() => onGenerateCertificate(parcel)}
             className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-[#0B3D6E] text-[11px] font-semibold rounded-md border border-blue-200 shadow-2xs whitespace-nowrap transition-colors"
           >
-            <span>📄 Form 15 Cert</span>
+            <FileCheck className="w-3 h-3 text-[#0B3D6E]" />
+            <span>Form 15 Cert</span>
           </button>
 
           <button
-            onClick={() => {
-              if (onOpenDossier) onOpenDossier(parcel);
-              else generateParcelPdfReport(parcel, userRole);
-            }}
+            onClick={() => downloadServerDossierPdf(parcel, userRole)}
             className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-md shadow-2xs whitespace-nowrap transition-colors"
+            title="Download authoritative server-sealed Cadastral Dossier PDF"
           >
             <Download className="w-3 h-3" />
             <span>Download PDF</span>
           </button>
         </div>
 
-        {/* Explainable Flags & Alerts Banner */}
+        {/* Explainable Rule Flags & Automated Findings Banner */}
         {flags.length > 0 && (
           <div className="mt-3 space-y-1.5">
             {flags.map((flag, idx) => {
@@ -293,7 +294,7 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-400 block">Taluk / Tehsil</span>
-                  <span className="font-medium text-slate-900">{parcel.subDistrictTaluk}</span>
+                  <span className="font-medium text-slate-900">{parcel.subDistrictTaluk || parcel.subDistrict}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block">Village / Revenue Ward</span>
@@ -325,11 +326,11 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
                   Record of Rights (RoR) & Ownership
                 </h3>
                 <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                  parcel.ownership.registrationStatus === 'Registered'
+                  (parcel.ownership.registrationStatus || 'Registered') === 'Registered'
                     ? 'bg-emerald-100 text-emerald-800'
                     : 'bg-amber-100 text-amber-800'
                 }`}>
-                  {parcel.ownership.registrationStatus}
+                  {parcel.ownership.registrationStatus || 'Registered & Mutated'}
                 </span>
               </div>
 
@@ -354,7 +355,7 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-400 block">Conveyance Deed No.</span>
-                  <span className="font-mono text-slate-800">{parcel.ownership.documentNumber}</span>
+                  <span className="font-mono text-slate-800">{parcel.ownership.documentNumber || parcel.ownership.registrationNumber}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block">Sub-Registrar Office (SRO)</span>
@@ -401,7 +402,7 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-400 block">Max Permissible Height</span>
-                  <span className="font-medium text-slate-900">{parcel.zoning.maxBuildingHeightMeters} meters</span>
+                  <span className="font-medium text-slate-900">{parcel.zoning.maxBuildingHeightMeters || 15} meters</span>
                 </div>
               </div>
             </div>
@@ -508,23 +509,23 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div>
                   <span className="text-slate-400 block">Power Connection ID</span>
-                  <span className="font-mono font-medium text-slate-900">{parcel.utilities.electricityConsumerId}</span>
+                  <span className="font-mono font-medium text-slate-900">{parcel.tax.electricityConsumerNo || 'DISCOM-BULK'}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block">Electricity DISCOM</span>
-                  <span className="font-medium text-slate-900">{parcel.utilities.electricityDiscom}</span>
+                  <span className="font-medium text-slate-900">State Electricity Supply</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block">Water Board Consumer ID</span>
-                  <span className="font-mono font-medium text-slate-900">{parcel.utilities.waterSupplyConnectionId}</span>
+                  <span className="font-mono font-medium text-slate-900">{parcel.tax.waterConnectionId || 'BWSSB-BULK-01'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">Piped Natural Gas (PNG)</span>
-                  <span className="font-medium text-slate-900">{parcel.utilities.pipelineGasStatus}</span>
+                  <span className="text-slate-400 block">Assessment Year</span>
+                  <span className="font-medium text-slate-900">{parcel.tax.assessmentYear}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block">Public Road ROW Width</span>
-                  <span className="font-medium text-slate-900">{parcel.utilities.roadAccessWidthMeters} meters</span>
+                  <span className="font-medium text-slate-900">Arterial Right-of-Way</span>
                 </div>
               </div>
             </div>
@@ -555,7 +556,7 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
                 <div>
                   <span className="text-slate-400 block">Last Assessed Capital Value</span>
                   <span className="font-bold text-slate-900">
-                    ₹{parcel.tax.lastAssessedValueInr.toLocaleString('en-IN')}
+                    ₹{(parcel.tax.lastAssessedValueInr || parcel.tax.annualTaxDemandInr * 12).toLocaleString('en-IN')}
                   </span>
                 </div>
                 <div>
@@ -585,11 +586,11 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
             >
               <FileText className="w-3.5 h-3.5" />
-              <span>NSDI Dossier</span>
+              <span>Preview dossier</span>
             </button>
           )}
           <button
-            onClick={() => generateParcelPdfReport(parcel, userRole)}
+            onClick={() => downloadServerDossierPdf(parcel, userRole)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
           >
             <Download className="w-3.5 h-3.5" />

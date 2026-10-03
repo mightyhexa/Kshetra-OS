@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { UserRole } from '../types';
+import { UserRole } from '../../shared/types';
+import { KshetraMark } from './KshetraMark';
 import { X, Lock, ShieldCheck, User, CheckCircle2, ArrowRight } from 'lucide-react';
 
 interface LoginModalProps {
@@ -9,7 +10,7 @@ interface LoginModalProps {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
-  const { login, currentRole } = useAuth();
+  const { switchRole, currentRole } = useAuth();
   const [selectedRole, setSelectedRole] = useState<UserRole>(currentRole);
   const [emailInput, setEmailInput] = useState('');
   const [otpInput, setOtpInput] = useState('123456');
@@ -18,13 +19,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const handleQuickLogin = async (role: UserRole) => {
-    await login(role);
+    await switchRole(role);
     onClose();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login(selectedRole, emailInput || undefined);
+    await switchRole(selectedRole);
     onClose();
   };
 
@@ -34,17 +35,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-200">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-[#0B3D6E] text-white flex items-center justify-center font-bold text-base">
-              LS
-            </div>
+            <KshetraMark size={32} />
             <div>
               <div className="flex items-center gap-1.5">
                 <h2 className="text-sm font-bold text-slate-900">National Land Portal SSO</h2>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 font-semibold">
-                  Demo Mode
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-100 text-[#0B3D6E] border border-blue-200 font-semibold">
+                  Simulated
                 </span>
               </div>
-              <p className="text-xs text-slate-500">Ministry of Rural Development • e-Pramaan Auth</p>
+              <p className="text-xs text-slate-500">Ministry of Rural Development • Simulated Auth</p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">

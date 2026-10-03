@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { MOCK_PARCELS } from '../data/mockParcels';
-import { Parcel } from '../types';
+import { apiClient } from '../services/apiClient';
+import { Parcel, WaterbodyRecord } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { 
   CadastralCrsType, 
@@ -55,14 +55,40 @@ export const MapSearchView: React.FC<MapSearchViewProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const polygonLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const bufferLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const waterbodyLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCity, setActiveCity] = useState('All India');
-  const [showDisputesOnly, setShowDisputesOnly] = useState(false);
+  const [showCourtDisputesOnly, setShowCourtDisputesOnly] = useState(false);
+  const [showRuleFlagsOnly, setShowRuleFlagsOnly] = useState(false);
   const [selectedZoningFilter, setSelectedZoningFilter] = useState<string>('ALL');
-  const [searchResults, setSearchResults] = useState<Parcel[]>(MOCK_PARCELS);
+  const [searchResults, setSearchResults] = useState<Parcel[]>([]);
+  const [waterbodies, setWaterbodies] = useState<WaterbodyRecord[]>([]);
   const [noResultsFound, setNoResultsFound] = useState(false);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [parcelRes, wbRes] = await Promise.all([
+          apiClient.getParcels({
+            q: searchQuery || undefined,
+            city: activeCity !== 'All India' ? activeCity : undefined,
+            disputed: showCourtDisputesOnly ? true : undefined,
+            flagged: showRuleFlagsOnly ? true : undefined,
+            limit: 100
+          }),
+          apiClient.getWaterbodies()
+        ]);
+        setSearchResults(parcelRes.items);
+        setWaterbodies(wbRes);
+        setNoResultsFound(parcelRes.items.length === 0 && searchQuery.length > 0);
+      } catch (err) {
+        console.error('Failed fetching parcels from backend:', err);
+      }
+    }
+    loadData();
+  }, [searchQuery, activeCity, showCourtDisputesOnly, showRuleFlagsOnly]);
 
   // High-Grade GIS Controls & Dynamic Proj4 CRS Engine
   const [basemap, setBasemap] = useState<BasemapType>('carto_voyager');
@@ -175,7 +201,7 @@ export const MapSearchView: React.FC<MapSearchViewProps> = ({
       // Dynamic Proj4 Geodetic Projection Transformation
       const effectiveCrs = enableAutoUtm ? getAutoUtmZone(parcel.centroidLon) : selectedCrs;
       const latLngs = transformPolygonRing(
-        parcel.boundaryGeojson.coordinates[0],
+        parcel.boundaryGeojson.coordinates[0] as [number, number][],
         effectiveCrs,
         'EPSG:4326',
         datumShift
@@ -207,7 +233,7 @@ export const MapSearchView: React.FC<MapSearchViewProps> = ({
           <div style="font-weight: 700; font-size: 11px; color: #0B3D6E;">${parcel.ulpin}</div>
           <div style="font-size: 10px; color: #475569;">Survey ${parcel.surveyNumber} • ${parcel.district}</div>
           <div style="font-size: 10px; font-weight: 600; color: ${isDisputed ? '#BE123C' : '#059669'};">
-            ${isDisputed ? '⚠️ Disputed Parcel' : '✓ Verified Cadastre'}
+            ${isDisputed ? '⚠️ Court Dispute on Record' : '✓ Verified Cadastre'}
           </div>
         </div>`,
         { sticky: true, opacity: 0.95 }
@@ -243,7 +269,7 @@ export const MapSearchView: React.FC<MapSearchViewProps> = ({
 
     const effectiveCrs = enableAutoUtm ? getAutoUtmZone(selectedParcel.centroidLon) : selectedCrs;
     const latLngs = transformPolygonRing(
-      selectedParcel.boundaryGeojson.coordinates[0],
+      selectedParcel.boundaryGeojson.coordinates[0] as [number, number][],
       effectiveCrs,
       'EPSG:4326',
       datumShift
@@ -267,41 +293,13 @@ export const MapSearchView: React.FC<MapSearchViewProps> = ({
       }
     }
 
-    let filtered = MOCK_PARCELS.filter(p => {
-      const matchesText = 
-        !q ||
-        p.ulpin.toLowerCase().includes(q) ||
-        p.district.toLowerCase().includes(q) ||
-        p.state.toLowerCase().includes(q) ||
-        p.villageWard.toLowerCase().includes(q) ||
-        p.surveyNumber.toLowerCase().includes(q) ||
-        p.ownership.ownerName.toLowerCase().includes(q);
-
-      const matchesDispute = !showDisputesOnly || p.encumbrance.disputeFlag;
-      const matchesZoning = selectedZoningFilter === 'ALL' || p.zoning.masterPlanClassification === selectedZoningFilter;
-
-      return matchesText && matchesDispute && matchesZoning;
-    });
-
-    setSearchResults(filtered);
-    setNoResultsFound(filtered.length === 0 && q.length > 0);
-
-    // If exact ULPIN or single match found, zoom to it automatically
-    if (filtered.length === 1 && q.length >= 6) {
-      onSelectParcel(filtered[0]);
-    }
+    setSearchQuery(q);
   };
 
   const handleCitySelect = (city: typeof CITY_PRESETS[0]) => {
     setActiveCity(city.name);
     if (mapInstanceRef.current) {
       mapInstanceRef.current.flyTo([city.lat, city.lon], city.zoom, { duration: 1.5 });
-    }
-    if (city.name === 'All India') {
-      setSearchResults(MOCK_PARCELS);
-    } else {
-      const cityFiltered = MOCK_PARCELS.filter(p => p.district.toLowerCase().includes(city.name.toLowerCase()));
-      setSearchResults(cityFiltered);
     }
   };
 
@@ -332,19 +330,29 @@ export const MapSearchView: React.FC<MapSearchViewProps> = ({
 
           <div className="hidden sm:flex items-center gap-1 border-l border-slate-200 pl-2">
             <button
-              onClick={() => {
-                const nextState = !showDisputesOnly;
-                setShowDisputesOnly(nextState);
-                handleSearch(searchQuery);
-              }}
+              onClick={() => setShowCourtDisputesOnly(!showCourtDisputesOnly)}
               className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors flex items-center gap-1 ${
-                showDisputesOnly
+                showCourtDisputesOnly
                   ? 'bg-rose-100 text-rose-800 border border-rose-200'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
+              title="Filter parcels with active court litigation or stay orders"
             >
-              <AlertCircle className="w-3.5 h-3.5" />
-              <span>Disputes Only</span>
+              <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+              <span>Court disputes</span>
+            </button>
+
+            <button
+              onClick={() => setShowRuleFlagsOnly(!showRuleFlagsOnly)}
+              className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors flex items-center gap-1 ${
+                showRuleFlagsOnly
+                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+              title="Filter parcels with automated rule flags (encroachments, buffers, tax, dual conveyance)"
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+              <span>Rule flags</span>
             </button>
 
             {/* GIS Layer Controls Trigger */}

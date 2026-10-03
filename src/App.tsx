@@ -20,7 +20,7 @@ import { TemporalChangeDetectionModal } from './components/TemporalChangeDetecti
 import { TitleClarityScoreModal } from './components/TitleClarityScoreModal';
 import { BhashiniVoiceAssistantModal } from './components/BhashiniVoiceAssistantModal';
 import { LoginModal } from './components/LoginModal';
-import { MOCK_PARCELS } from './data/mockParcels';
+import { apiClient } from './services/apiClient';
 import { Parcel } from './types';
 
 function MainAppContent() {
@@ -58,12 +58,16 @@ function MainAppContent() {
   };
 
   // Action: View parcel on map from dashboard or citizen tracker
-  const handleViewParcelOnMap = (ulpin: string) => {
-    const found = MOCK_PARCELS.find(p => p.ulpin === ulpin);
-    if (found) {
-      setSelectedParcel(found);
-      setActiveTab('map');
+  const handleViewParcelOnMap = async (ulpin: string) => {
+    try {
+      const found = await apiClient.getParcel(ulpin);
+      if (found) {
+        setSelectedParcel(found);
+      }
+    } catch {
+      // Ignore if not found
     }
+    setActiveTab('map');
   };
 
   // Action handlers for advanced tools
@@ -233,6 +237,14 @@ function MainAppContent() {
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
       />
+
+      {/* Persistent Floating Prototype Badge */}
+      <div className="fixed bottom-3 right-3 z-40 pointer-events-none">
+        <div className="bg-slate-900/90 text-white backdrop-blur-xs px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide border border-slate-700 shadow-md flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+          <span>Prototype • Synthetic Data • Simulated Login</span>
+        </div>
+      </div>
     </div>
   );
 }

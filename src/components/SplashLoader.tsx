@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ShieldCheck, Compass, CheckCircle2, Terminal } from 'lucide-react';
-import { IndianEmblemLogo } from './IndianEmblemLogo';
+import { KshetraMark } from './KshetraMark';
 
 interface SplashLoaderProps {
   onComplete: () => void;
@@ -86,16 +86,16 @@ export const SplashLoader: React.FC<SplashLoaderProps> = ({ onComplete }) => {
           {/* Radar Glow Effect */}
           <div className="absolute inset-4 rounded-full bg-blue-500/10 border border-blue-300/30 flex items-center justify-center shadow-inner" />
           
-          {/* Central Indian Emblem (3 Lions Capital + 24-Spoke Spinning Ashoka Chakra) */}
+          {/* Central KSHETRA Cadastral Grid Symbol */}
           <div className="relative z-10 drop-shadow-2xl">
-            <IndianEmblemLogo size="xl" variant="gold" showChakraSpin={true} />
+            <KshetraMark size={64} className="w-16 h-16" />
           </div>
         </div>
 
         {/* Brand Titles with Cinzel Font */}
         <div className="space-y-1.5">
           <div className="text-[11px] font-rajdhani uppercase tracking-[0.25em] text-amber-400 font-bold">
-            सत्यमेव जयते • GOVERNMENT OF INDIA
+            SMART INDIA HACKATHON 2026 • PS SIH26014
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-wider text-white font-cinzel">
             KSHETRA OS

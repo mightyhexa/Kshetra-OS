@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { Parcel } from '../types';
-import { IndianEmblemLogo } from './IndianEmblemLogo';
+import { KshetraMark } from './KshetraMark';
 import { generateParcelPdfReport } from '../services/pdfReportGenerator';
 import { X, Printer, ShieldCheck, CheckCircle2, QrCode, FileText, Download } from 'lucide-react';
 
@@ -78,10 +78,10 @@ export const DigitalCertificateModal: React.FC<DigitalCertificateModalProps> = (
           {/* Header */}
           <div className="text-center space-y-1.5 border-b-2 border-slate-800 pb-4">
             <div className="flex justify-center mb-1">
-              <IndianEmblemLogo size="lg" variant="navy" />
+              <KshetraMark size={48} className="w-12 h-12" />
             </div>
-            <div className="text-[10px] font-rajdhani uppercase tracking-[0.25em] text-slate-500 font-bold">
-              सत्यमेव जयते
+            <div className="text-[10px] font-rajdhani uppercase tracking-[0.25em] text-[#0B3D6E] font-bold">
+              KSHETRA OS CADASTRE SPECIFICATION
             </div>
             <h1 className="text-xs font-bold uppercase tracking-widest text-slate-600 font-rajdhani">
               Government of {parcel.state} • Department of Revenue & Land Records
@@ -126,7 +126,7 @@ export const DigitalCertificateModal: React.FC<DigitalCertificateModalProps> = (
               </div>
               <div>
                 <span className="text-slate-400 block text-[10px]">Taluk / Sub-District</span>
-                <span>{parcel.subDistrictTaluk}</span>
+                <span>{parcel.subDistrictTaluk || parcel.subDistrict}</span>
               </div>
               <div>
                 <span className="text-slate-400 block text-[10px]">District & State</span>
@@ -153,7 +153,7 @@ export const DigitalCertificateModal: React.FC<DigitalCertificateModalProps> = (
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px]">Conveyance Instrument No.</span>
-                  <span className="font-mono">{parcel.ownership.documentNumber} ({parcel.ownership.registrationDate})</span>
+                  <span className="font-mono">{parcel.ownership.documentNumber || parcel.ownership.registrationNumber} ({parcel.ownership.registrationDate})</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px]">Sub-Registrar Office</span>

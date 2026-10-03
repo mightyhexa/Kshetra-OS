@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { landStackApi } from '../services/api';
-import { MOCK_PARCELS } from '../data/mockParcels';
-import { ParcelApiResponse } from '../services/api';
+import { apiClient } from '../services/apiClient';
+import { Parcel } from '../types';
 import { X, Terminal, CheckCircle2, Lock, ArrowRight, ShieldCheck, Copy, Check } from 'lucide-react';
 
 interface ApiInspectorModalProps {
@@ -15,28 +14,54 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
   onClose,
   initialUlpin
 }) => {
-  const [targetUlpin, setTargetUlpin] = useState(initialUlpin || MOCK_PARCELS[0].ulpin);
-  const [citizenResponse, setCitizenResponse] = useState<ParcelApiResponse | null>(null);
-  const [officerResponse, setOfficerResponse] = useState<ParcelApiResponse | null>(null);
+  const [parcels, setParcels] = useState<Parcel[]>([]);
+  const [targetUlpin, setTargetUlpin] = useState(initialUlpin || '');
+  const [citizenResponse, setCitizenResponse] = useState<any>(null);
+  const [officerResponse, setOfficerResponse] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [copiedRole, setCopiedRole] = useState<'citizen' | 'officer' | null>(null);
 
+  useEffect(() => {
+    async function initParcels() {
+      try {
+        const res = await apiClient.getParcels({ limit: 100 });
+        setParcels(res.items);
+        if (!targetUlpin && res.items.length > 0) {
+          const defaultUlpin = initialUlpin || res.items[0].ulpin;
+          setTargetUlpin(defaultUlpin);
+          fetchBothResponses(defaultUlpin);
+        }
+      } catch (err) {
+        console.error('Failed to load parcels for inspector:', err);
+      }
+    }
+    if (isOpen) {
+      initParcels();
+    }
+  }, [isOpen, initialUlpin]);
+
   const fetchBothResponses = async (ulpinToFetch: string) => {
+    if (!ulpinToFetch) return;
     setIsLoading(true);
-    const [citRes, offRes] = await Promise.all([
-      landStackApi.getParcelByUlpin(ulpinToFetch, 'citizen', 'Public Sandbox User', 'SANDBOX-01'),
-      landStackApi.getParcelByUlpin(ulpinToFetch, 'officer', 'Officer Sandbox Auditor', 'OFFICER-AUDIT-01')
-    ]);
-    setCitizenResponse(citRes);
-    setOfficerResponse(offRes);
-    setIsLoading(false);
+    try {
+      const [citRes, offRes] = await Promise.all([
+        apiClient.fetchParcelAsRole(ulpinToFetch, 'citizen'),
+        apiClient.fetchParcelAsRole(ulpinToFetch, 'officer')
+      ]);
+      setCitizenResponse(citRes);
+      setOfficerResponse(offRes);
+    } catch (err) {
+      console.error('Failed to fetch inspection responses:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && targetUlpin) {
       fetchBothResponses(targetUlpin);
     }
-  }, [isOpen, targetUlpin]);
+  }, [targetUlpin, isOpen]);
 
   if (!isOpen) return null;
 
@@ -81,7 +106,7 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
               }}
               className="p-1.5 bg-white border border-slate-300 rounded font-mono text-xs text-slate-800 flex-1 max-w-md"
             >
-              {MOCK_PARCELS.map((p) => (
+              {parcels.map((p) => (
                 <option key={p.ulpin} value={p.ulpin}>
                   {p.ulpin} ({p.district} • {p.ownership.ownerName} • {p.encumbrance.hasMortgage ? 'Has Mortgage' : 'Clear'})
                 </option>
@@ -91,7 +116,7 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
 
           <div className="flex items-center gap-2 text-[11px] text-slate-500">
             <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200">
-              API Level Gating Confirmed
+              Live Express API Gating (JWT Bearer Auth)
             </span>
           </div>
         </div>
@@ -104,10 +129,10 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
                 <span className="font-bold text-xs text-slate-800">Role: CITIZEN</span>
-                <span className="text-[10px] text-slate-500 font-mono">GET /api/parcels/:ulpin?role=citizen</span>
+                <span className="text-[10px] text-slate-500 font-mono">GET /api/parcels/:ulpin (Citizen JWT)</span>
               </div>
               <button
-                onClick={() => copyJson(citizenResponse?.data, 'citizen')}
+                onClick={() => copyJson(citizenResponse?.data?.data || citizenResponse?.data, 'citizen')}
                 className="text-[11px] text-[#0B3D6E] hover:underline flex items-center gap-1 font-medium"
               >
                 {copiedRole === 'citizen' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
@@ -116,14 +141,14 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
             </div>
 
             <div className="p-2.5 bg-blue-50 border-b border-blue-100 text-[11px] text-[#0B3D6E]">
-              <strong>Security Policy Applied:</strong> <code className="font-mono">encumbrance.mortgageDetails</code> is absent; sensitive financial loans are stripped before transmission.
+              <strong>Security Policy Applied:</strong> <code className="font-mono">encumbrance.mortgageDetails</code>, stay orders, and court docket numbers are physically stripped by the server before transmission.
             </div>
 
             <div className="flex-1 p-3 overflow-y-auto font-mono text-[11px] bg-white text-slate-800">
               {isLoading ? (
-                <div className="text-slate-400">Querying endpoint...</div>
+                <div className="text-slate-400">Querying backend...</div>
               ) : (
-                <pre>{JSON.stringify(citizenResponse?.data?.encumbrance, null, 2)}</pre>
+                <pre>{JSON.stringify((citizenResponse?.data?.data || citizenResponse?.data)?.encumbrance, null, 2)}</pre>
               )}
             </div>
           </div>
@@ -134,10 +159,10 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 <span className="font-bold text-xs text-slate-800">Role: LAND OFFICER</span>
-                <span className="text-[10px] text-slate-500 font-mono">GET /api/parcels/:ulpin?role=officer</span>
+                <span className="text-[10px] text-slate-500 font-mono">GET /api/parcels/:ulpin (Officer JWT)</span>
               </div>
               <button
-                onClick={() => copyJson(officerResponse?.data, 'officer')}
+                onClick={() => copyJson(officerResponse?.data?.data || officerResponse?.data, 'officer')}
                 className="text-[11px] text-[#0B3D6E] hover:underline flex items-center gap-1 font-medium"
               >
                 {copiedRole === 'officer' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
@@ -146,14 +171,14 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
             </div>
 
             <div className="p-2.5 bg-emerald-50 border-b border-emerald-100 text-[11px] text-emerald-900">
-              <strong>Privileged Clearance:</strong> Full banking mortgage charge (Bank name, ₹ loan amount, charge ID, court docket) returned.
+              <strong>Privileged Clearance:</strong> Full banking mortgage charge (Bank name, loan amount, charge ID, court docket) returned.
             </div>
 
             <div className="flex-1 p-3 overflow-y-auto font-mono text-[11px] bg-white text-slate-800">
               {isLoading ? (
-                <div className="text-slate-400">Querying endpoint...</div>
+                <div className="text-slate-400">Querying backend...</div>
               ) : (
-                <pre>{JSON.stringify(officerResponse?.data?.encumbrance, null, 2)}</pre>
+                <pre>{JSON.stringify((officerResponse?.data?.data || officerResponse?.data)?.encumbrance, null, 2)}</pre>
               )}
             </div>
           </div>
