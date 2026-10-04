@@ -262,13 +262,24 @@ export const AuditLedgerView: React.FC = () => {
         </div>
       </div>
 
+      {/* Verification Progress Sweep Bar */}
+      {isVerifying && (
+        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden relative shadow-inner">
+          <div
+            className="bg-[#0B3D6E] h-2 rounded-full transition-all duration-150"
+            style={{ width: `${verificationProgress}%` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent ledger-verify-sweep" />
+        </div>
+      )}
+
       {/* Verification Result Banner (Green on Pass, Red on Fail) */}
       {verificationResult && (
         <div
-          className={`p-4 rounded-xl border flex items-start justify-between gap-4 text-xs transition-all animate-in fade-in duration-200 ${
+          className={`p-4 rounded-xl border flex items-start justify-between gap-4 text-xs transition-all tab-transition ${
             verificationResult.isValid
               ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
-              : 'bg-rose-50 border-rose-300 text-rose-950'
+              : 'bg-rose-50 border-rose-300 text-rose-950 block-shake-once'
           }`}
         >
           <div className="flex items-start gap-3">
@@ -306,20 +317,27 @@ export const AuditLedgerView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1.5 overflow-x-auto py-2 scrollbar-none">
-          {entries.map((block) => (
-            <button
-              key={block.blockIndex}
-              onClick={() => setSelectedBlockForStrip(selectedBlockForStrip === block.blockIndex ? null : block.blockIndex)}
-              className={`shrink-0 px-2.5 py-1.5 rounded-lg border text-center font-mono text-[11px] transition-all cursor-pointer ${
-                selectedBlockForStrip === block.blockIndex
-                  ? 'bg-[#0B3D6E] text-white border-[#0B3D6E] shadow-xs'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-              }`}
-            >
-              <span className="font-bold block text-[10px]">#{block.blockIndex}</span>
-              <span className="text-[9px] opacity-75">{block.action.slice(0, 10)}</span>
-            </button>
-          ))}
+          {entries.map((block, idx) => {
+            const isBroken = verificationResult && !verificationResult.isValid && verificationResult.brokenBlockIndex === block.blockIndex;
+            const isSelected = selectedBlockForStrip === block.blockIndex;
+            return (
+              <button
+                key={block.blockIndex}
+                onClick={() => setSelectedBlockForStrip(isSelected ? null : block.blockIndex)}
+                className={`shrink-0 px-2.5 py-1.5 rounded-lg border text-center font-mono text-[11px] transition-all cursor-pointer chain-link-new interactive-press ${
+                  isBroken
+                    ? 'bg-rose-100 text-rose-900 border-rose-400 font-bold block-shake-once'
+                    : isSelected
+                    ? 'bg-[#0B3D6E] text-white border-[#0B3D6E] shadow-xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+                style={{ animationDelay: `${idx * 30}ms` }}
+              >
+                <span className="font-bold block text-[10px]">#{block.blockIndex}</span>
+                <span className="text-[9px] opacity-75">{block.action.slice(0, 10)}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

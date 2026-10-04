@@ -63,6 +63,7 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
   const [isDownloading, setIsDownloading] = useState(false);
   const [parcelLedgerBlocks, setParcelLedgerBlocks] = useState<AuditLedgerEntry[]>([]);
   const [isLoadingLedger, setIsLoadingLedger] = useState(false);
+  const [sheetStop, setSheetStop] = useState<'peek' | 'half' | 'full'>('half');
 
   // Load ledger blocks for parcel
   useEffect(() => {
@@ -98,12 +99,22 @@ export const ParcelDetailPanel: React.FC<ParcelDetailPanelProps> = ({
     }
   };
 
+  const mobileHeightClass = 
+    sheetStop === 'peek' ? 'h-[180px]' : 
+    sheetStop === 'half' ? 'h-[50vh]' : 'h-[88vh]';
+
   return (
     <div
-      className="fixed inset-y-0 right-0 z-40 w-full sm:max-w-xl md:max-w-2xl bg-white shadow-2xl border-l border-[#CBD5E1] flex flex-col transform transition-transform duration-200 ease-in-out"
+      className={`fixed inset-x-0 bottom-0 sm:inset-y-0 sm:left-auto sm:right-0 z-40 w-full sm:max-w-xl md:max-w-2xl bg-white shadow-2xl border-t sm:border-t-0 sm:border-l border-[#CBD5E1] rounded-t-2xl sm:rounded-none flex flex-col side-panel-slide-in transition-all duration-300 ${mobileHeightClass} sm:h-full pb-safe`}
       role="region"
       aria-labelledby="parcel-panel-title"
     >
+      {/* Mobile Drag Handle */}
+      <div 
+        onClick={() => setSheetStop(sheetStop === 'peek' ? 'half' : sheetStop === 'half' ? 'full' : 'peek')}
+        className="sm:hidden w-16 h-1.5 bg-slate-300 hover:bg-slate-400 rounded-full mx-auto my-2 cursor-pointer shrink-0" 
+        title="Tap to adjust panel height"
+      />
       {/* 1. Header with ULPIN Chip, Status Chip, Primary & Secondary Actions */}
       <div className="p-4 sm:p-5 bg-[#F8FAFC] border-b border-[#E2E8F0] shrink-0 space-y-3">
         <div className="flex items-start justify-between gap-3">

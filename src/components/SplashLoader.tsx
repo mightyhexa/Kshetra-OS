@@ -22,8 +22,11 @@ export const SplashLoader: React.FC<SplashLoaderProps> = ({ onComplete }) => {
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
-    // If user has already visited in this session, complete immediately
-    if (sessionStorage.getItem('kshetra_booted')) {
+    // If user has already visited in this session or reduced motion is preferred, complete immediately
+    if (
+      sessionStorage.getItem('kshetra_booted') ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
       onComplete();
       return;
     }

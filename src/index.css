@@ -15,6 +15,7 @@
     --color-amber: #D97706;
     --color-rose: #E11D48;
     --color-saffron: #E8731A;
+    --motion-scale: 1;
   }
 
   body {
@@ -140,4 +141,119 @@ html.high-contrast .text-[#475569] {
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Stage 5A Motion & Polish */
+@keyframes tabFadeRise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseOnce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shakeOnce {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+@keyframes strokeDashDraw {
+  from { stroke-dashoffset: 1000; opacity: 0; }
+  to { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes cardStagger {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes countUpAnimation {
+  from { opacity: 0.3; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes verifySweepAnimation {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes chainLinkNewAnimation {
+  0% { opacity: 0; transform: scale(0.8) translateY(-4px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.tab-transition {
+  animation: tabFadeRise calc(180ms * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.badge-pulse-once {
+  animation: pulseOnce calc(600ms * var(--motion-scale)) ease-out 1;
+}
+
+.block-shake-once {
+  animation: shakeOnce calc(400ms * var(--motion-scale)) ease-in-out 1;
+}
+
+.parcel-outline-draw {
+  animation: strokeDashDraw calc(400ms * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  stroke-dasharray: 1000;
+}
+
+.side-panel-slide-in {
+  animation: slideInRight calc(220ms * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.card-stagger-item {
+  animation: cardStagger calc(250ms * var(--motion-scale)) cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.kpi-count-up {
+  animation: countUpAnimation calc(400ms * var(--motion-scale)) ease-out forwards;
+}
+
+.ledger-verify-sweep {
+  animation: verifySweepAnimation calc(1200ms * var(--motion-scale)) ease-in-out infinite;
+}
+
+.chain-link-new {
+  animation: chainLinkNewAnimation calc(350ms * var(--motion-scale)) ease-out forwards;
+}
+
+.interactive-press {
+  transition: transform calc(120ms * var(--motion-scale)) ease, opacity calc(120ms * var(--motion-scale)) ease, background-color calc(120ms * var(--motion-scale)) ease;
+}
+.interactive-press:hover {
+  transform: translateY(-1px);
+}
+.interactive-press:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-transition,
+  .badge-pulse-once,
+  .block-shake-once,
+  .parcel-outline-draw,
+  .side-panel-slide-in,
+  .card-stagger-item,
+  .kpi-count-up,
+  .ledger-verify-sweep,
+  .chain-link-new,
+  .interactive-press,
+  .animate-pulse,
+  .animate-spin {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
 }

@@ -69,9 +69,12 @@ export const Chip: React.FC<ChipProps> = ({
   const current = styles[severity];
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs gap-1' : 'px-2.5 py-1 text-xs font-semibold gap-1.5';
 
+  const isRisk = severity === 'amber' || severity === 'rose' || severity === 'court';
+  const pulseClass = isRisk ? 'badge-pulse-once' : '';
+
   return (
     <span
-      className={`inline-flex items-center rounded-md border ${current.bg} ${current.text} ${current.border} ${sizeClasses} select-none ${className}`}
+      className={`inline-flex items-center rounded-md border ${current.bg} ${current.text} ${current.border} ${sizeClasses} ${pulseClass} select-none ${className}`}
       {...props}
     >
       {icon || current.defaultIcon}

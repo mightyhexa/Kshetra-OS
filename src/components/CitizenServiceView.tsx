@@ -287,7 +287,7 @@ export const CitizenServiceView: React.FC<CitizenServiceViewProps> = ({
             />
           ) : (
             <div className="space-y-3">
-              {requests.map((req) => {
+              {requests.map((req, idx) => {
                 const statusSeverity = 
                   req.status === 'Approved' ? 'clear' :
                   req.status === 'Rejected' ? 'rose' :
@@ -300,7 +300,8 @@ export const CitizenServiceView: React.FC<CitizenServiceViewProps> = ({
                   <Card
                     key={req.id}
                     variant="default"
-                    className="p-4 space-y-3 hover:border-slate-400 transition-colors"
+                    className="p-4 space-y-3 hover:border-slate-400 transition-colors card-stagger-item interactive-press"
+                    style={{ animationDelay: `${idx * 40}ms` }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>

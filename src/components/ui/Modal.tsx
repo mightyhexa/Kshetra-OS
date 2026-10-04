@@ -61,7 +61,7 @@ export const Modal: React.FC<ModalProps> = ({
     >
       <div
         ref={modalRef}
-        className={`w-full ${maxWidthClasses[maxWidth]} bg-white rounded-xl shadow-2xl border border-[#CBD5E1] overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150`}
+        className={`w-full h-full sm:h-auto ${maxWidthClasses[maxWidth]} bg-white rounded-none sm:rounded-xl shadow-2xl border-0 sm:border border-[#CBD5E1] overflow-hidden flex flex-col max-h-full sm:max-h-[90vh] animate-in zoom-in-95 duration-150`}
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-[#F8FAFC] border-b border-[#E2E8F0] shrink-0">

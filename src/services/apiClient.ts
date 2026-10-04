@@ -216,6 +216,10 @@ class ApiClient {
     return this.request('/api/ledger/reset', { method: 'POST' });
   }
 
+  public async resetDemoData(): Promise<{ success: boolean; message: string; resetBlockIndex: number }> {
+    return this.request('/api/admin/reset-demo', { method: 'POST' });
+  }
+
   // Stage 2 Document & Dossier Operations
   public async uploadDocument(file: File, parcelUlpin?: string): Promise<{ success: boolean; message: string; data: any }> {
     const formData = new FormData();

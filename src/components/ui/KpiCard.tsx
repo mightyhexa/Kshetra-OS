@@ -32,7 +32,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-2xs transition-all duration-150 ${accentStyles[accent]} ${
+      className={`bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-2xs transition-all duration-150 interactive-press ${accentStyles[accent]} ${
         onClick ? 'cursor-pointer hover:shadow-xs hover:border-[#CBD5E1]' : ''
       } ${className}`}
     >
@@ -40,7 +40,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
         <div className="grow min-w-0">
           <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider truncate">{title}</p>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="font-serif text-2xl font-bold text-[#0F172A] tracking-tight">{value}</span>
+            <span className="font-serif text-2xl font-bold text-[#0F172A] tracking-tight kpi-count-up">{value}</span>
             {badge && <div>{badge}</div>}
           </div>
           {subtitle && <p className="text-xs text-[#64748B] mt-1 truncate">{subtitle}</p>}

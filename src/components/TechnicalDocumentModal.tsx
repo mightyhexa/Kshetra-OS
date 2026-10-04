@@ -12,7 +12,7 @@ export const TechnicalDocumentModal: React.FC<TechnicalDocumentModalProps> = ({
   onClose
 }) => {
   const { t } = useLanguage();
-  const [activeSection, setActiveSection] = useState<'api' | 'interop' | 'schemas' | 'arch' | 'gis' | 'security' | 'uiux' | 'deployment'>('api');
+  const [activeSection, setActiveSection] = useState<'api' | 'interop' | 'schemas' | 'arch' | 'gis' | 'security' | 'uiux' | 'deployment' | 'honesty'>('api');
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
@@ -180,6 +180,14 @@ All inter-agency transitions are logged in an immutable state machine with actor
             }`}
           >
             {t('techDocTabDeployment')}
+          </button>
+          <button
+            onClick={() => setActiveSection('honesty')}
+            className={`px-3 py-1.5 rounded-md font-bold whitespace-nowrap cursor-pointer ${
+              activeSection === 'honesty' ? 'bg-[#0B3D6E] text-white shadow-xs' : 'text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200'
+            }`}
+          >
+            Real vs Simulated Architecture
           </button>
         </div>
 
@@ -402,6 +410,61 @@ All inter-agency transitions are logged in an immutable state machine with actor
                     <li>Incorporate automated ISRO Bhuvan satellite orthophoto tile layers.</li>
                   </ul>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'honesty' && (
+            <div className="space-y-4">
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-950">
+                <h3 className="text-sm font-bold text-amber-900 font-serif mb-1">
+                  Real vs Simulated Architecture (SIH26014 Integrity Matrix)
+                </h3>
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  Honest declaration of fully operational production components versus simulated or mock integrations.
+                </p>
+              </div>
+
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold uppercase text-[10px]">
+                      <th className="p-3 w-1/3">Category</th>
+                      <th className="p-3">Architecture Components & Verified Capabilities</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-sans">
+                    <tr className="bg-emerald-50/50">
+                      <td className="p-3 font-bold text-emerald-900 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>Real (Fully Implemented)</span>
+                      </td>
+                      <td className="p-3 text-emerald-950 leading-relaxed font-medium">
+                        ULPIN derivation, GeoJSON polygons, polygon-intersection overlap detection, eco-buffer distance rule, rule engine R1-R9, server-side role masking, JWT auth, append-only SHA-256 hash chain with full recomputation, workflow state machine, document upload with magic-byte checks, server-side PDF dossiers with QR and verification.
+                      </td>
+                    </tr>
+
+                    <tr className="bg-amber-50/40">
+                      <td className="p-3 font-bold text-amber-900 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                        <span>Simulated</span>
+                      </td>
+                      <td className="p-3 text-amber-950 leading-relaxed font-medium">
+                        login (e-Pramaan, Aadhaar eKYC), government data feeds (synthetic parcels), Bhashini voice (browser speech), satellite change detection, any government API integration.
+                      </td>
+                    </tr>
+
+                    <tr className="bg-blue-50/40">
+                      <td className="p-3 font-bold text-[#0B3D6E] flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                        <span>Roadmap</span>
+                      </td>
+                      <td className="p-3 text-slate-800 leading-relaxed font-medium">
+                        PostGIS, FastAPI adapters, HSM signing, vector tiles, real e-Pramaan.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

@@ -219,7 +219,8 @@ export type LedgerAction =
   | 'REQUEST_SUBMITTED'
   | 'REQUEST_TRANSITION'
   | 'DOCUMENT_UPLOADED'
-  | 'DOSSIER_ISSUED';
+  | 'DOSSIER_ISSUED'
+  | 'ADMIN_DEMO_RESET';
 
 export interface LedgerBlock {
   index: number;

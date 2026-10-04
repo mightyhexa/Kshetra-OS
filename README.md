@@ -68,3 +68,11 @@ npx tsx test/stage1.test.ts
 # Production build
 npm run build
 ```
+
+---
+
+## 🎬 Testing Animations
+
+- **Slow Motion Testing (`?slowmo=1`)**: Append `?slowmo=1` to the application URL in your browser (e.g. `http://localhost:3000/?slowmo=1`). This scales all animation durations and transitions by 4× via the CSS variable `--motion-scale`, making every subtle transition (tab rise, panel slide, ledger sweep, card stagger, tamper shake) easily observable for UI evaluation.
+- **Accessibility (`prefers-reduced-motion`)**: The system respects system-level reduced motion settings. When enabled, all keyframes, transitions, and transforms are instantly bypassed.
+

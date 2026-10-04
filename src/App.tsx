@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { ToastProvider } from './components/ui/Toast';
@@ -6,33 +6,44 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { LoginPage } from './components/LoginPage';
 import { SplashLoader } from './components/SplashLoader';
-import { MapSearchView } from './components/MapSearchView';
 import { ParcelDetailPanel } from './components/ParcelDetailPanel';
-import { CitizenServiceView } from './components/CitizenServiceView';
-import { OfficerDashboard } from './components/OfficerDashboard';
-import { AuditLedgerView } from './components/AuditLedgerView';
-import { DocumentVerificationView } from './components/DocumentVerificationView';
-import { UserProfileModal } from './components/UserProfileModal';
-
-const AnalyticsView = React.lazy(() => import('./components/AnalyticsView').then(m => ({ default: m.AnalyticsView })));
-import { ApiInspectorModal } from './components/ApiInspectorModal';
-import { TechnicalDocumentModal } from './components/TechnicalDocumentModal';
-import { FeaturesRoadmapModal } from './components/FeaturesRoadmapModal';
-import { DigitalCertificateModal } from './components/DigitalCertificateModal';
-import { GovernmentDossierModal } from './components/GovernmentDossierModal';
-import { GuidedDemoModal } from './components/GuidedDemoModal';
-import { CadastralSubdivisionModal } from './components/CadastralSubdivisionModal';
-import { TemporalChangeDetectionModal } from './components/TemporalChangeDetectionModal';
-import { TitleClarityScoreModal } from './components/TitleClarityScoreModal';
-import { BhashiniVoiceAssistantModal } from './components/BhashiniVoiceAssistantModal';
-import { LoginModal } from './components/LoginModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { apiClient } from './services/apiClient';
 import { Parcel } from './types';
 import { ChevronRight, Home } from 'lucide-react';
 
+// Lazy Loaded Views and Modals for Fast Initial Bundle (< 500kB)
+const MapSearchView = lazy(() => import('./components/MapSearchView').then(m => ({ default: m.MapSearchView })));
+const CitizenServiceView = lazy(() => import('./components/CitizenServiceView').then(m => ({ default: m.CitizenServiceView })));
+const OfficerDashboard = lazy(() => import('./components/OfficerDashboard').then(m => ({ default: m.OfficerDashboard })));
+const AuditLedgerView = lazy(() => import('./components/AuditLedgerView').then(m => ({ default: m.AuditLedgerView })));
+const DocumentVerificationView = lazy(() => import('./components/DocumentVerificationView').then(m => ({ default: m.DocumentVerificationView })));
+const AnalyticsView = lazy(() => import('./components/AnalyticsView').then(m => ({ default: m.AnalyticsView })));
+
+const UserProfileModal = lazy(() => import('./components/UserProfileModal').then(m => ({ default: m.UserProfileModal })));
+const ApiInspectorModal = lazy(() => import('./components/ApiInspectorModal').then(m => ({ default: m.ApiInspectorModal })));
+const TechnicalDocumentModal = lazy(() => import('./components/TechnicalDocumentModal').then(m => ({ default: m.TechnicalDocumentModal })));
+const FeaturesRoadmapModal = lazy(() => import('./components/FeaturesRoadmapModal').then(m => ({ default: m.FeaturesRoadmapModal })));
+const DigitalCertificateModal = lazy(() => import('./components/DigitalCertificateModal').then(m => ({ default: m.DigitalCertificateModal })));
+const GovernmentDossierModal = lazy(() => import('./components/GovernmentDossierModal').then(m => ({ default: m.GovernmentDossierModal })));
+const GuidedDemoModal = lazy(() => import('./components/GuidedDemoModal').then(m => ({ default: m.GuidedDemoModal })));
+const CadastralSubdivisionModal = lazy(() => import('./components/CadastralSubdivisionModal').then(m => ({ default: m.CadastralSubdivisionModal })));
+const TemporalChangeDetectionModal = lazy(() => import('./components/TemporalChangeDetectionModal').then(m => ({ default: m.TemporalChangeDetectionModal })));
+const TitleClarityScoreModal = lazy(() => import('./components/TitleClarityScoreModal').then(m => ({ default: m.TitleClarityScoreModal })));
+const BhashiniVoiceAssistantModal = lazy(() => import('./components/BhashiniVoiceAssistantModal').then(m => ({ default: m.BhashiniVoiceAssistantModal })));
+const LoginModal = lazy(() => import('./components/LoginModal').then(m => ({ default: m.LoginModal })));
+
 function MainAppContent() {
   const { currentRole, isAuthenticated, logout } = useAuth();
   const { t } = useLanguage();
+
+  // Handle ?slowmo=1 dev param
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('slowmo') === '1') {
+      document.documentElement.style.setProperty('--motion-scale', '4');
+    }
+  }, []);
 
   // Animated Splash Boot Screen State
   const [showSplash, setShowSplash] = useState<boolean>(true);
@@ -176,41 +187,45 @@ function MainAppContent() {
 
       {/* Main View Body */}
       <main id="main-content" className="flex-1 relative overflow-hidden flex flex-col min-h-0">
-        {activeTab === 'map' && (
-          <MapSearchView
-            selectedParcel={selectedParcel}
-            onSelectParcel={setSelectedParcel}
-          />
-        )}
+        <Suspense fallback={<div className="p-8 text-center text-xs text-slate-500 font-mono"><div className="w-8 h-8 rounded-full border-4 border-[#0B3D6E] border-t-transparent animate-spin mx-auto mb-2" />Loading KSHETRA Module...</div>}>
+          <div key={activeTab} className="tab-transition flex-1 flex flex-col min-h-0">
+            <ErrorBoundary key={activeTab}>
+              {activeTab === 'map' && (
+                <MapSearchView
+                  selectedParcel={selectedParcel}
+                  onSelectParcel={setSelectedParcel}
+                />
+              )}
 
-        {activeTab === 'citizen' && (
-          <CitizenServiceView
-            onViewParcelOnMap={handleViewParcelOnMap}
-            preselectedUlpin={preselectedUlpinForService}
-            onOpenDossier={handleOpenDossier}
-          />
-        )}
+              {activeTab === 'citizen' && (
+                <CitizenServiceView
+                  onViewParcelOnMap={handleViewParcelOnMap}
+                  preselectedUlpin={preselectedUlpinForService}
+                  onOpenDossier={handleOpenDossier}
+                />
+              )}
 
-        {activeTab === 'officer' && (
-          <OfficerDashboard
-            onViewParcelOnMap={handleViewParcelOnMap}
-            onOpenDossier={handleOpenDossier}
-          />
-        )}
+              {activeTab === 'officer' && (
+                <OfficerDashboard
+                  onViewParcelOnMap={handleViewParcelOnMap}
+                  onOpenDossier={handleOpenDossier}
+                />
+              )}
 
-        {activeTab === 'audit' && (
-          <AuditLedgerView />
-        )}
+              {activeTab === 'audit' && (
+                <AuditLedgerView />
+              )}
 
-        {activeTab === 'verify' && (
-          <DocumentVerificationView />
-        )}
+              {activeTab === 'verify' && (
+                <DocumentVerificationView />
+              )}
 
-        {activeTab === 'analytics' && (
-          <React.Suspense fallback={<div className="p-8"><div className="w-8 h-8 rounded-full border-4 border-[#0B3D6E] border-t-transparent animate-spin mx-auto" /></div>}>
-            <AnalyticsView />
-          </React.Suspense>
-        )}
+              {activeTab === 'analytics' && (
+                <AnalyticsView />
+              )}
+            </ErrorBoundary>
+          </div>
+        </Suspense>
 
         {/* Slide-over Parcel Detail Panel */}
         <ParcelDetailPanel

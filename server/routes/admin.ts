@@ -3,7 +3,7 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { repository } from '../repo';
 import { computeParcelFlags } from '../../src/services/riskEngine';
 import { verifyChain, getTamperOverlayState } from '../services/ledgerService';
-import { Parcel, ServiceRequest } from '../../shared/types';
+import { Parcel, ServiceRequest, AuditLedgerEntry } from '../../shared/types';
 
 export const adminRouter = Router();
 
@@ -176,6 +176,61 @@ adminRouter.get('/selftest', requireAuth, requireRole(['policy_admin']), async (
         totalChecks: checks.length,
         checks
       }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 3. Demo Dataset Reset (Admin Only)
+adminRouter.post('/reset-demo', requireAuth, requireRole(['policy_admin']), async (req, res, next) => {
+  try {
+    await repository.resetToSeed();
+
+    // Log the reset operation itself into the ledger
+    const ledger = await repository.getLedgerBlocks();
+    const lastBlock = ledger[ledger.length - 1];
+
+    const nextBlockIndex = ledger.length + 1;
+    const previousHash = lastBlock ? lastBlock.currentHash : '0000000000000000000000000000000000000000000000000000000000000000';
+
+    const resetEntry: AuditLedgerEntry = {
+      blockIndex: nextBlockIndex,
+      timestamp: new Date().toISOString(),
+      action: 'ADMIN_DEMO_RESET',
+      actorRole: 'policy_admin',
+      actorName: 'Policy Administrator',
+      actorId: (req as any).user?.userId || 'ADMIN_RESET',
+      parcelUlpin: '00000000000000',
+      details: 'Full system demo dataset reset executed by authorized Policy Administrator.',
+      metadataPayload: {
+        timestamp: new Date().toISOString(),
+        initiator: 'policy_admin',
+        reason: 'Authorized administrator triggered full demo dataset reset'
+      },
+      previousHash,
+      currentHash: ''
+    };
+
+    const crypto = await import('crypto');
+    const payloadStr = JSON.stringify({
+      blockIndex: resetEntry.blockIndex,
+      timestamp: resetEntry.timestamp,
+      action: resetEntry.action,
+      actorRole: resetEntry.actorRole,
+      parcelUlpin: resetEntry.parcelUlpin,
+      details: resetEntry.details,
+      previousHash: resetEntry.previousHash,
+      metadata: resetEntry.metadataPayload
+    });
+    resetEntry.currentHash = crypto.createHash('sha256').update(payloadStr).digest('hex');
+
+    await repository.appendLedgerBlock(resetEntry);
+
+    res.json({
+      success: true,
+      message: 'Demo dataset successfully restored to seed baseline. Reset operation logged in audit ledger.',
+      resetBlockIndex: resetEntry.blockIndex
     });
   } catch (err) {
     next(err);

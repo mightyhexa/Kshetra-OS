@@ -253,7 +253,8 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
             />
           ) : (
             <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-xs overflow-hidden">
-              <div className="overflow-x-auto">
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-slate-600 font-semibold uppercase text-[10px]">
@@ -309,6 +310,44 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                     })}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile Stacked Cards View */}
+              <div className="md:hidden divide-y divide-slate-100">
+                {requests.map((req) => {
+                  const statusSeverity = 
+                    req.status === 'Approved' ? 'clear' :
+                    req.status === 'Rejected' ? 'rose' :
+                    req.status === 'Cross Verified' ? 'info' : 'amber';
+
+                  return (
+                    <div key={req.id} className="p-3 space-y-2 card-stagger-item">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono font-bold text-[#0B3D6E] text-xs">{req.id}</span>
+                        <Chip size="sm" severity={statusSeverity} label={req.status} />
+                      </div>
+                      <div className="font-medium text-slate-800 text-xs">{req.requestType.replace(/_/g, ' ')}</div>
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <PlotTag ulpin={req.parcelUlpin} size="sm" />
+                        {req.status !== 'Approved' && req.status !== 'Rejected' && (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => {
+                              setTransitioningRequest(req);
+                              const nextDefault = 
+                                req.status === 'Applied' ? 'Under Review' :
+                                req.status === 'Under Review' ? 'Cross Verified' : 'Approved';
+                              setTargetNextStatus(nextDefault as any);
+                            }}
+                          >
+                            {t('reviewAction')}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
