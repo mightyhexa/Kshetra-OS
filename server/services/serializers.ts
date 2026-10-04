@@ -1,5 +1,30 @@
-import { Parcel, UserRole } from '../../shared/types';
+import { AuditLedgerEntry, Parcel, UserRole } from '../../shared/types';
 import { isOfficerOrAdmin } from '../../shared/roles';
+
+/**
+ * Strips sensitive banking, judicial, and internal officer fields from ledger blocks when role is 'citizen'.
+ */
+export function serializeLedgerBlock(block: AuditLedgerEntry, role: UserRole): AuditLedgerEntry {
+  const cloned: AuditLedgerEntry = JSON.parse(JSON.stringify(block));
+  if (isOfficerOrAdmin(role)) {
+    return cloned;
+  }
+
+  // Mask sensitive metadata payload
+  if (cloned.metadataPayload) {
+    delete cloned.metadataPayload.mortgageDetails;
+    delete cloned.metadataPayload.courtCaseNumber;
+    delete cloned.metadataPayload.stayOrderDetails;
+    delete cloned.metadataPayload.coOwners;
+    delete cloned.metadataPayload.cersaiCharges;
+    delete cloned.metadataPayload.aadhaar;
+    delete cloned.metadataPayload.aadhaarMasked;
+    delete cloned.metadataPayload.remarks;
+    delete cloned.metadataPayload.officerRemarks;
+  }
+
+  return cloned;
+}
 
 /**
  * Strips sensitive banking and judicial fields when role is 'citizen'.

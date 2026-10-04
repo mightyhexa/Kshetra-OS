@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import { X, BookOpen, Download, Copy, Check, FileCode, CheckCircle2 } from 'lucide-react';
 
 interface TechnicalDocumentModalProps {
@@ -10,6 +11,7 @@ export const TechnicalDocumentModal: React.FC<TechnicalDocumentModalProps> = ({
   isOpen,
   onClose
 }) => {
+  const { t } = useLanguage();
   const [activeSection, setActiveSection] = useState<'api' | 'interop' | 'schemas' | 'arch' | 'gis' | 'security' | 'uiux' | 'deployment'>('api');
   const [copied, setCopied] = useState(false);
 
@@ -97,14 +99,14 @@ All inter-agency transitions are logged in an immutable state machine with actor
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-slate-900">
-                  SIH26014 Standard Technical Document (STD)
+                  {t('techDocTitle')}
                 </h2>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-blue-100 text-[#0B3D6E] font-semibold border border-blue-200">
-                  Mandatory Deliverable
+                  SIH26014
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Official specification for API, interoperability, GIS, data models, and security frameworks.
+                {t('techDocSubtitle')}
               </p>
             </div>
           </div>
@@ -117,67 +119,67 @@ All inter-agency transitions are logged in an immutable state machine with actor
         <div className="flex items-center gap-1 overflow-x-auto pb-1 text-xs border-b border-slate-200 scrollbar-none">
           <button
             onClick={() => setActiveSection('api')}
-            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap cursor-pointer ${
               activeSection === 'api' ? 'bg-[#0B3D6E] text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            1. API Standards
+            {t('techDocTabApi')}
           </button>
           <button
             onClick={() => setActiveSection('interop')}
-            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap cursor-pointer ${
               activeSection === 'interop' ? 'bg-[#0B3D6E] text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            2. Interoperability
+            {t('techDocTabInterop')}
           </button>
           <button
             onClick={() => setActiveSection('schemas')}
-            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap cursor-pointer ${
               activeSection === 'schemas' ? 'bg-[#0B3D6E] text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            3. Data Schemas
+            {t('techDocTabSchemas')}
           </button>
           <button
             onClick={() => setActiveSection('arch')}
-            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap cursor-pointer ${
               activeSection === 'arch' ? 'bg-[#0B3D6E] text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            4. Architecture
+            {t('techDocTabArch')}
           </button>
           <button
             onClick={() => setActiveSection('gis')}
-            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap cursor-pointer ${
               activeSection === 'gis' ? 'bg-[#0B3D6E] text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            5. GIS Standards
+            {t('techDocTabGis')}
           </button>
           <button
             onClick={() => setActiveSection('security')}
-            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap cursor-pointer ${
               activeSection === 'security' ? 'bg-[#0B3D6E] text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            6. Security & Ledger
+            {t('techDocTabSecurity')}
           </button>
           <button
             onClick={() => setActiveSection('uiux')}
-            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap cursor-pointer ${
               activeSection === 'uiux' ? 'bg-[#0B3D6E] text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            7. UI/UX & Palette
+            {t('techDocTabUiux')}
           </button>
           <button
             onClick={() => setActiveSection('deployment')}
-            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap cursor-pointer ${
               activeSection === 'deployment' ? 'bg-[#0B3D6E] text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            8. Scalability
+            {t('techDocTabDeployment')}
           </button>
         </div>
 
@@ -406,30 +408,36 @@ All inter-agency transitions are logged in an immutable state machine with actor
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-200">
           <div className="flex items-center gap-2">
             <button
               onClick={handleDownloadMarkdown}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-200"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-200 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Download Spec as Markdown (.md)</span>
+              <span>{t('downloadSpecMd')}</span>
             </button>
             <button
               onClick={copyToClipboard}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-slate-600 hover:text-slate-900 text-xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-slate-600 hover:text-slate-900 text-xs cursor-pointer"
             >
               {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
+              <span>{copied ? t('copied') : t('copyUlpin')}</span>
             </button>
           </div>
 
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 bg-[#0B3D6E] text-white font-semibold rounded-lg text-xs hover:bg-[#082a4d]"
-          >
-            Close Specification
-          </button>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] text-slate-500 font-medium italic">
+              {t('techSpecEnglishNotice')}
+            </span>
+
+            <button
+              onClick={onClose}
+              className="px-4 py-1.5 bg-[#0B3D6E] text-white font-semibold rounded-lg text-xs hover:bg-[#082a4d] cursor-pointer"
+            >
+              {t('closeBtn')}
+            </button>
+          </div>
         </div>
       </div>
     </div>

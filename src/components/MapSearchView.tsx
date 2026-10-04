@@ -3,27 +3,18 @@ import L from 'leaflet';
 import { apiClient } from '../services/apiClient';
 import { Parcel, WaterbodyRecord } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { 
-  CadastralCrsType, 
-  SUPPORTED_CRS_REGISTRY, 
-  transformPolygonRing, 
-  getAutoUtmZone, 
-  computeGeodeticConvergence 
-} from '../services/projectionEngine';
+import { useToast } from './ui/Toast';
+import { computeParcelFlags } from '../services/riskEngine';
+import { Button } from './ui/Button';
+import { Drawer } from './ui/Drawer';
+import { Chip } from './ui/Chip';
+import { PlotTag } from './ui/PlotTag';
 import { 
   Search, 
-  MapPin, 
   Layers, 
-  AlertCircle, 
-  Compass, 
-  Sliders, 
-  Eye, 
-  Satellite, 
-  Map, 
-  ShieldAlert,
-  SlidersHorizontal,
-  RefreshCw,
-  Cpu
+  SlidersHorizontal, 
+  ChevronDown, 
+  ChevronUp
 } from 'lucide-react';
 
 interface MapSearchViewProps {
@@ -41,23 +32,24 @@ const CITY_PRESETS = [
   { name: 'Ahmedabad', lat: 23.0225, lon: 72.5714, zoom: 12 }
 ];
 
-type BasemapType = 'streets' | 'satellite' | 'carto_voyager' | 'carto_light';
-
-const CARTO_API_KEY = 'cb1_43wr_1_dc96fe87f12fd1e5b8aec805';
+import { BASEMAP_PROVIDERS, BasemapType } from '../services/basemaps';
 
 export const MapSearchView: React.FC<MapSearchViewProps> = ({
   selectedParcel,
-  onSelectParcel,
-  highlightUlpin
+  onSelectParcel
 }) => {
-  const { t, currentLang } = useLanguage();
+  const { t } = useLanguage();
+  const { warning } = useToast();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const polygonLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const bufferLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const waterbodyLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const overlapEvidenceGroupRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const tileErrorCountRef = useRef<number>(0);
 
+  // Search & Query Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCity, setActiveCity] = useState('All India');
   const [showCourtDisputesOnly, setShowCourtDisputesOnly] = useState(false);
@@ -65,8 +57,29 @@ export const MapSearchView: React.FC<MapSearchViewProps> = ({
   const [selectedZoningFilter, setSelectedZoningFilter] = useState<string>('ALL');
   const [searchResults, setSearchResults] = useState<Parcel[]>([]);
   const [waterbodies, setWaterbodies] = useState<WaterbodyRecord[]>([]);
-  const [noResultsFound, setNoResultsFound] = useState(false);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
+  // 6 Independent Layer Toggles
+  const [layerBoundaries, setLayerBoundaries] = useState(true);
+  const [layerZoning, setLayerZoning] = useState(true);
+  const [layerOwnership, setLayerOwnership] = useState(false);
+  const [layerCourtDisputes, setLayerCourtDisputes] = useState(true);
+  const [layerEcoBuffer, setLayerEcoBuffer] = useState(true);
+  const [layerOverlapEvidence, setLayerOverlapEvidence] = useState(true);
+
+  // Basemap & Advanced Proj4 Section
+  const [basemap, setBasemap] = useState<BasemapType>('osm');
+  const [isLayersMenuOpen, setIsLayersMenuOpen] = useState(false);
+  const [isAdvancedCrsOpen, setIsAdvancedCrsOpen] = useState(false);
+  const [hoveredParcel, setHoveredParcel] = useState<Parcel | null>(null);
+
+  // Compute active filters count for badge
+  const activeFiltersCount = (activeCity !== 'All India' ? 1 : 0) +
+    (showCourtDisputesOnly ? 1 : 0) +
+    (showRuleFlagsOnly ? 1 : 0) +
+    (selectedZoningFilter !== 'ALL' ? 1 : 0);
+
+  // Load Parcels & Waterbodies from backend
   useEffect(() => {
     async function loadData() {
       try {
@@ -80,61 +93,50 @@ export const MapSearchView: React.FC<MapSearchViewProps> = ({
           }),
           apiClient.getWaterbodies()
         ]);
-        setSearchResults(parcelRes.items);
+
+        let filtered = parcelRes.items;
+        if (selectedZoningFilter !== 'ALL') {
+          filtered = filtered.filter(p => p.zoning?.masterPlanClassification?.toUpperCase().includes(selectedZoningFilter));
+        }
+        setSearchResults(filtered);
         setWaterbodies(wbRes);
-        setNoResultsFound(parcelRes.items.length === 0 && searchQuery.length > 0);
       } catch (err) {
         console.error('Failed fetching parcels from backend:', err);
       }
     }
     loadData();
-  }, [searchQuery, activeCity, showCourtDisputesOnly, showRuleFlagsOnly]);
-
-  // High-Grade GIS Controls & Dynamic Proj4 CRS Engine
-  const [basemap, setBasemap] = useState<BasemapType>('carto_voyager');
-  const [polygonOpacity, setPolygonOpacity] = useState<number>(0.4);
-  const [showEcoBuffer, setShowEcoBuffer] = useState<boolean>(true);
-  const [isLayerControlOpen, setIsLayerControlOpen] = useState(false);
-  const [datumShift, setDatumShift] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [selectedCrs, setSelectedCrs] = useState<CadastralCrsType>('EPSG:4326');
-  const [enableAutoUtm, setEnableAutoUtm] = useState<boolean>(false);
-
-  // Instantaneous geodetic convergence & Helmert parameters
-  const convergence = computeGeodeticConvergence(selectedParcel?.centroidLat || 20.5937);
-  const activeCrsMeta = SUPPORTED_CRS_REGISTRY[selectedCrs];
+  }, [searchQuery, activeCity, showCourtDisputesOnly, showRuleFlagsOnly, selectedZoningFilter]);
 
   // Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    // Create map centered on India
     const map = L.map(mapContainerRef.current, {
       center: [20.5937, 78.9629],
       zoom: 5,
       zoomControl: false,
-      attributionControl: false
+      attributionControl: true
     });
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Initial Tile Layer using Carto Voyager with provided API Key
-    const tileLayer = L.tileLayer(
-      `https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${CARTO_API_KEY}`,
-      {
-        maxZoom: 19,
-        attribution: '© CARTO (API Key Activated) • © OpenStreetMap | KSHETRA OS'
-      }
-    ).addTo(map);
-    tileLayerRef.current = tileLayer;
+    const initialConfig = BASEMAP_PROVIDERS.osm;
+    const initialTiles = L.tileLayer(initialConfig.url, {
+      attribution: initialConfig.attribution,
+      maxZoom: initialConfig.maxZoom
+    }).addTo(map);
 
-    // Custom layer groups
-    const bufferGroup = L.layerGroup().addTo(map);
-    bufferLayerGroupRef.current = bufferGroup;
-
-    const polygonGroup = L.layerGroup().addTo(map);
-    polygonLayerGroupRef.current = polygonGroup;
-
+    tileLayerRef.current = initialTiles;
+    bufferLayerGroupRef.current = L.layerGroup().addTo(map);
+    waterbodyLayerGroupRef.current = L.layerGroup().addTo(map);
+    polygonLayerGroupRef.current = L.layerGroup().addTo(map);
+    overlapEvidenceGroupRef.current = L.layerGroup().addTo(map);
     mapInstanceRef.current = map;
+
+    // Trigger map invalidateSize to ensure full-bleed rendering without bands
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
 
     return () => {
       map.remove();
@@ -142,542 +144,517 @@ export const MapSearchView: React.FC<MapSearchViewProps> = ({
     };
   }, []);
 
-  // Update Basemap Tiles (Street vs Satellite vs Carto Voyager vs Carto Light)
+  // Update Basemap Tiles with Error Fallback (No CARTO, No Watermarks)
   useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
+    if (!mapInstanceRef.current) return;
 
     if (tileLayerRef.current) {
-      map.removeLayer(tileLayerRef.current);
+      mapInstanceRef.current.removeLayer(tileLayerRef.current);
     }
 
-    let url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-    let attribution = '© OpenStreetMap | KSHETRA OS';
+    const config = BASEMAP_PROVIDERS[basemap] || BASEMAP_PROVIDERS.osm;
+    tileErrorCountRef.current = 0;
 
-    if (basemap === 'satellite') {
-      url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-      attribution = 'Tiles © Esri & DigitalGlobe Earthstar Geographics | KSHETRA OS';
-    } else if (basemap === 'carto_voyager') {
-      url = `https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=${CARTO_API_KEY}`;
-      attribution = '© CARTO Basemaps (Key Activated) • © OpenStreetMap | KSHETRA OS';
-    } else if (basemap === 'carto_light') {
-      url = `https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png?key=${CARTO_API_KEY}`;
-      attribution = '© CARTO Light (Key Activated) • © OpenStreetMap | KSHETRA OS';
-    }
+    const newTileLayer = L.tileLayer(config.url, {
+      attribution: config.attribution,
+      maxZoom: config.maxZoom
+    });
 
-    const newTileLayer = L.tileLayer(url, { maxZoom: 19, attribution }).addTo(map);
+    // Automatic fallback if tile errors occur
+    newTileLayer.on('tileerror', () => {
+      tileErrorCountRef.current += 1;
+      if (tileErrorCountRef.current === 4) {
+        const fallbackOrder: BasemapType[] = ['osm', 'esri_streets', 'esri_satellite'];
+        const currentIdx = fallbackOrder.indexOf(basemap);
+        const nextBasemap = fallbackOrder[(currentIdx + 1) % fallbackOrder.length];
+        setBasemap(nextBasemap);
+        warning('Network tile loading notice', `Switched basemap to ${BASEMAP_PROVIDERS[nextBasemap].name} due to provider response.`);
+      }
+    });
+
+    newTileLayer.addTo(mapInstanceRef.current);
     tileLayerRef.current = newTileLayer;
-  }, [basemap]);
+    newTileLayer.bringToBack();
+  }, [basemap, warning]);
 
-  // Update Map Polygons, Buffer Zones & Markers when filters/results change
+  // Window resize handler to invalidate map size
   useEffect(() => {
-    const map = mapInstanceRef.current;
-    const group = polygonLayerGroupRef.current;
-    const bufferGroup = bufferLayerGroupRef.current;
-    if (!map || !group || !bufferGroup) return;
+    const handleResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-    group.clearLayers();
-    bufferGroup.clearLayers();
+  // Render Polygons & Overlays
+  useEffect(() => {
+    if (!mapInstanceRef.current || !polygonLayerGroupRef.current) return;
 
+    polygonLayerGroupRef.current.clearLayers();
+    bufferLayerGroupRef.current?.clearLayers();
+    waterbodyLayerGroupRef.current?.clearLayers();
+    overlapEvidenceGroupRef.current?.clearLayers();
+
+    // 1. Waterbodies & Eco-buffers (if toggled)
+    if (layerEcoBuffer) {
+      waterbodies.forEach((wb) => {
+        const ring = wb.boundaryGeojson?.coordinates?.[0] || [];
+        if (ring.length > 0) {
+          const latLngs = ring.map(c => [c[1], c[0]] as [number, number]);
+          const centroid = latLngs[0];
+
+          // Buffer circle
+          L.circle(centroid, {
+            radius: wb.bufferDistanceMeters,
+            color: '#059669',
+            dashArray: '4, 4',
+            weight: 1.5,
+            fillColor: '#10B981',
+            fillOpacity: 0.12
+          }).addTo(bufferLayerGroupRef.current!);
+
+          // Core Waterbody Polygon
+          L.polygon(latLngs, {
+            color: '#0284C7',
+            weight: 2,
+            fillColor: '#38BDF8',
+            fillOpacity: 0.6
+          }).bindTooltip(`<strong>${wb.name}</strong><br/>${wb.bufferDistanceMeters}m Statutory Eco-Buffer (${wb.type})`, { sticky: true })
+            .addTo(waterbodyLayerGroupRef.current!);
+        }
+      });
+    }
+
+    // 2. Cadastral Parcels
     searchResults.forEach((parcel) => {
       const isSelected = selectedParcel?.ulpin === parcel.ulpin;
       const isDisputed = parcel.encumbrance.disputeFlag;
-      const isZoningMismatch = parcel.zoning.masterPlanClassification !== parcel.zoning.registeredLandUse;
+      const computedFlags = computeParcelFlags(parcel);
 
-      // Color coding rule
-      let fillColor = '#0B3D6E'; // Navy
       let strokeColor = '#0B3D6E';
-      if (isDisputed) {
-        fillColor = '#E11D48'; // Rose/Red for legal dispute
-        strokeColor = '#BE123C';
-      } else if (isZoningMismatch) {
-        fillColor = '#D97706'; // Amber for zoning mismatch
-        strokeColor = '#B45309';
-      } else if (parcel.zoning.masterPlanClassification === 'Industrial') {
-        fillColor = '#475569'; // Slate
-        strokeColor = '#334155';
+      let fillColor = '#0B3D6E';
+      let fillOpacity = 0.25;
+
+      if (layerCourtDisputes && isDisputed) {
+        strokeColor = '#E11D48';
+        fillColor = '#E11D48';
+        fillOpacity = 0.45;
+      } else if (layerZoning) {
+        const z = (parcel.zoning?.masterPlanClassification || '').toUpperCase();
+        if (z.includes('COMMERCIAL')) {
+          strokeColor = '#4F46E5';
+          fillColor = '#6366F1';
+        } else if (z.includes('INDUSTRIAL')) {
+          strokeColor = '#D97706';
+          fillColor = '#F59E0B';
+        } else if (z.includes('AGRICULTURAL')) {
+          strokeColor = '#059669';
+          fillColor = '#10B981';
+        } else {
+          strokeColor = '#0284C7';
+          fillColor = '#38BDF8';
+        }
+      } else if (layerOwnership) {
+        strokeColor = parcel.ownership.ownershipType === 'Private Individual' ? '#0B3D6E' : '#7C3AED';
+        fillColor = strokeColor;
       }
 
-      // Dynamic Proj4 Geodetic Projection Transformation
-      const effectiveCrs = enableAutoUtm ? getAutoUtmZone(parcel.centroidLon) : selectedCrs;
-      const latLngs = transformPolygonRing(
-        parcel.boundaryGeojson.coordinates[0] as [number, number][],
-        effectiveCrs,
-        'EPSG:4326',
-        datumShift
-      );
+      const ring = parcel.boundaryGeojson?.coordinates?.[0]?.map((c: number[]) => [c[1], c[0]] as [number, number]) || [];
 
-      // If Eco-Buffer is enabled, draw a faint 15-meter buffer circle around disputed/sensitive parcels
-      if (showEcoBuffer && (isDisputed || isZoningMismatch)) {
-        const bufferCircle = L.circle([parcel.centroidLat, parcel.centroidLon], {
-          radius: 65,
-          color: isDisputed ? '#BE123C' : '#D97706',
-          weight: 1,
-          dashArray: '4, 6',
-          fillColor: isDisputed ? '#F43F5E' : '#F59E0B',
-          fillOpacity: 0.12
+      if (ring.length > 0) {
+        const poly = L.polygon(ring, {
+          color: isSelected ? '#E8731A' : strokeColor,
+          weight: isSelected ? 4 : layerBoundaries ? 2 : 0.5,
+          fillColor,
+          fillOpacity: isSelected ? 0.6 : fillOpacity,
+          className: isDisputed && layerCourtDisputes ? 'court-dispute-hatch' : ''
         });
-        bufferGroup.addLayer(bufferCircle);
-      }
 
-      const polygon = L.polygon(latLngs, {
-        color: isSelected ? '#1D4ED8' : strokeColor,
-        weight: isSelected ? 4 : 2,
-        fillColor: fillColor,
-        fillOpacity: isSelected ? Math.min(polygonOpacity + 0.3, 0.9) : polygonOpacity
-      });
+        poly.on('click', () => {
+          onSelectParcel(parcel);
+        });
 
-      // Interactive popup
-      polygon.bindTooltip(
-        `<div>
-          <div style="font-weight: 700; font-size: 11px; color: #0B3D6E;">${parcel.ulpin}</div>
-          <div style="font-size: 10px; color: #475569;">Survey ${parcel.surveyNumber} • ${parcel.district}</div>
-          <div style="font-size: 10px; font-weight: 600; color: ${isDisputed ? '#BE123C' : '#059669'};">
-            ${isDisputed ? '⚠️ Court Dispute on Record' : '✓ Verified Cadastre'}
+        poly.on('mouseover', () => {
+          setHoveredParcel(parcel);
+        });
+
+        poly.on('mouseout', () => {
+          setHoveredParcel(null);
+        });
+
+        poly.bindTooltip(`
+          <div class="font-sans text-xs">
+            <strong class="text-[#0B3D6E] font-mono">${parcel.displayUlpin}</strong><br/>
+            <span>Survey: ${parcel.surveyNumber}</span><br/>
+            <span>Owner: ${parcel.ownership.ownerName}</span><br/>
+            <span class="font-semibold ${isDisputed ? 'text-rose-600' : 'text-emerald-700'}">${isDisputed ? 'Court Disputed' : 'Clean Title'}</span>
           </div>
-        </div>`,
-        { sticky: true, opacity: 0.95 }
-      );
+        `, { sticky: true });
 
-      polygon.on('click', () => {
-        onSelectParcel(parcel);
-      });
+        poly.addTo(polygonLayerGroupRef.current!);
+      }
 
-      group.addLayer(polygon);
-
-      // Centroid marker badge
-      const marker = L.circleMarker([parcel.centroidLat, parcel.centroidLon], {
-        radius: isSelected ? 6 : 4,
-        fillColor: isDisputed ? '#E11D48' : '#0B3D6E',
-        color: '#FFFFFF',
-        weight: 1.5,
-        fillOpacity: 1
-      });
-
-      marker.on('click', () => {
-        onSelectParcel(parcel);
-      });
-
-      group.addLayer(marker);
+      // 3. Overlap Evidence Highlight (if toggled and overlap finding present)
+      if (layerOverlapEvidence && computedFlags.some(f => f.ruleId === 'R2' && f.severity === 'high')) {
+        if (ring.length > 0) {
+          L.polygon(ring, {
+            color: '#E11D48',
+            weight: 3,
+            fillColor: '#E11D48',
+            fillOpacity: 0.35,
+            dashArray: '4, 4'
+          }).bindTooltip(`<strong>Cadastral Overlap (>5%)</strong><br/>Boundary Collision Finding`, { sticky: true })
+            .addTo(overlapEvidenceGroupRef.current!);
+        }
+      }
     });
-  }, [searchResults, selectedParcel, polygonOpacity, showEcoBuffer, datumShift, selectedCrs, enableAutoUtm]);
 
-  // When selectedParcel changes, fly to its bounds and highlight
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || !selectedParcel) return;
-
-    const effectiveCrs = enableAutoUtm ? getAutoUtmZone(selectedParcel.centroidLon) : selectedCrs;
-    const latLngs = transformPolygonRing(
-      selectedParcel.boundaryGeojson.coordinates[0] as [number, number][],
-      effectiveCrs,
-      'EPSG:4326',
-      datumShift
-    );
-    const bounds = L.latLngBounds(latLngs);
-    map.flyToBounds(bounds, { maxZoom: 17, padding: [60, 60], duration: 1.2 });
-  }, [selectedParcel, datumShift, selectedCrs, enableAutoUtm]);
-
-  // Handle Search Input & Filtering
-  const handleSearch = (queryText: string) => {
-    setSearchQuery(queryText);
-    const q = queryText.trim().toLowerCase();
-
-    // Check if query is latitude, longitude
-    const coordMatch = q.match(/^([-+]?[0-9]*\.?[0-9]+)\s*,\s*([-+]?[0-9]*\.?[0-9]+)$/);
-    if (coordMatch) {
-      const lat = parseFloat(coordMatch[1]);
-      const lon = parseFloat(coordMatch[2]);
-      if (mapInstanceRef.current && !isNaN(lat) && !isNaN(lon)) {
-        mapInstanceRef.current.flyTo([lat, lon], 16);
+    // Auto-fit bounds if a city was chosen
+    if (activeCity !== 'All India') {
+      const city = CITY_PRESETS.find(c => c.name === activeCity);
+      if (city) {
+        mapInstanceRef.current.setView([city.lat, city.lon], city.zoom);
       }
     }
+  }, [
+    searchResults,
+    waterbodies,
+    selectedParcel,
+    layerBoundaries,
+    layerZoning,
+    layerOwnership,
+    layerCourtDisputes,
+    layerEcoBuffer,
+    layerOverlapEvidence
+  ]);
 
-    setSearchQuery(q);
-  };
-
-  const handleCitySelect = (city: typeof CITY_PRESETS[0]) => {
-    setActiveCity(city.name);
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([city.lat, city.lon], city.zoom, { duration: 1.5 });
-    }
-  };
+  // Animate map when selectedParcel changes
+  useEffect(() => {
+    if (!selectedParcel || !mapInstanceRef.current) return;
+    mapInstanceRef.current.flyTo([selectedParcel.centroidLat, selectedParcel.centroidLon], 16, { duration: 1.2 });
+  }, [selectedParcel]);
 
   return (
-    <div className="relative w-full h-[calc(100vh-69px)] flex flex-col overflow-hidden bg-slate-50">
-      {/* Top Floating GIS Search & Filter Toolbar */}
-      <div className="absolute top-4 left-4 right-4 z-20 max-w-4xl mx-auto space-y-2 pointer-events-none">
-        {/* Search Input Bar */}
-        <div className="pointer-events-auto bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-slate-200/80 p-2 flex items-center gap-2">
-          <div className="pl-2 text-slate-400">
-            <Search className="w-4 h-4 text-[#0B3D6E]" />
-          </div>
+    <div className="relative w-full h-[calc(100vh-100px)] min-h-[500px] overflow-hidden flex flex-col">
+      {/* Full-Bleed Leaflet Canvas */}
+      <div ref={mapContainerRef} className="w-full h-full grow z-0" />
+
+      {/* Top Floating Search & Filter Bar */}
+      <div className="absolute top-4 left-4 z-20 flex items-center gap-2 max-w-xl w-full">
+        <div className="relative grow bg-white rounded-xl shadow-md border border-[#E2E8F0] flex items-center overflow-hidden">
+          <Search className="w-4 h-4 text-slate-400 ml-3.5 shrink-0" />
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('searchPlaceholder')}
-            className="flex-1 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden bg-transparent"
+            className="w-full px-3 py-2.5 text-sm bg-transparent border-none focus:outline-none placeholder:text-slate-400 font-sans"
           />
           {searchQuery && (
             <button
-              onClick={() => handleSearch('')}
-              className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
+              onClick={() => setSearchQuery('')}
+              className="mr-3 text-xs text-slate-400 hover:text-slate-700 cursor-pointer font-semibold"
             >
               Clear
             </button>
           )}
+        </div>
 
-          <div className="hidden sm:flex items-center gap-1 border-l border-slate-200 pl-2">
-            <button
-              onClick={() => setShowCourtDisputesOnly(!showCourtDisputesOnly)}
-              className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors flex items-center gap-1 ${
-                showCourtDisputesOnly
-                  ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-              title="Filter parcels with active court litigation or stay orders"
-            >
-              <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-              <span>Court disputes</span>
-            </button>
+        {/* Single Filters Button with Active Count Badge */}
+        <Button
+          variant={activeFiltersCount > 0 ? 'primary' : 'outline'}
+          size="md"
+          leftIcon={<SlidersHorizontal className="w-4 h-4" />}
+          onClick={() => setIsFilterDrawerOpen(true)}
+          className="bg-white shadow-md shrink-0"
+        >
+          <span>Filters</span>
+          {activeFiltersCount > 0 && (
+            <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-900 font-mono text-xs font-bold">
+              {activeFiltersCount}
+            </span>
+          )}
+        </Button>
 
-            <button
-              onClick={() => setShowRuleFlagsOnly(!showRuleFlagsOnly)}
-              className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors flex items-center gap-1 ${
-                showRuleFlagsOnly
-                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-              title="Filter parcels with automated rule flags (encroachments, buffers, tax, dual conveyance)"
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-              <span>Rule flags</span>
-            </button>
+        {/* Layers Control Toggle Button */}
+        <Button
+          variant={isLayersMenuOpen ? 'primary' : 'outline'}
+          size="md"
+          leftIcon={<Layers className="w-4 h-4" />}
+          onClick={() => setIsLayersMenuOpen(!isLayersMenuOpen)}
+          className="bg-white shadow-md shrink-0"
+        >
+          <span>Layers</span>
+        </Button>
+      </div>
 
-            {/* GIS Layer Controls Trigger */}
-            <button
-              onClick={() => setIsLayerControlOpen(!isLayerControlOpen)}
-              className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors flex items-center gap-1 ${
-                isLayerControlOpen
-                  ? 'bg-[#0B3D6E] text-white'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-              title="Toggle Satellite Orthophoto & GIS Layers"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>GIS Layers</span>
-            </button>
+      {/* Independent Layers Floating Panel (Top Right, doesn't overlap search bar) */}
+      {isLayersMenuOpen && (
+        <div className="absolute top-16 right-4 z-20 w-72 bg-white rounded-xl shadow-xl border border-[#CBD5E1] p-4 space-y-3 animate-in fade-in duration-150 text-xs">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h4 className="font-serif font-bold text-sm text-[#0B3D6E]">Cadastral Map Layers</h4>
+            <span className="text-[10px] text-slate-400">Independent Toggles</span>
           </div>
-        </div>
 
-        {/* Quick City Presets Pills */}
-        <div className="pointer-events-auto flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
-          <span className="text-[11px] font-semibold text-slate-700 bg-white/90 px-2 py-1 rounded-md border border-slate-200 shadow-xs shrink-0 flex items-center gap-1">
-            <Compass className="w-3 h-3 text-[#0B3D6E]" /> Quick View:
-          </span>
-          {CITY_PRESETS.map((city) => (
-            <button
-              key={city.name}
-              onClick={() => handleCitySelect(city)}
-              className={`text-xs px-2.5 py-1 rounded-md font-medium transition-all shrink-0 shadow-xs border ${
-                activeCity === city.name
-                  ? 'bg-[#0B3D6E] text-white border-[#0B3D6E]'
-                  : 'bg-white/90 text-slate-700 hover:bg-white border-slate-200'
-              }`}
-            >
-              {city.name}
-            </button>
-          ))}
-        </div>
-
-        {/* Expandable GIS Layer Controls Box */}
-        {isLayerControlOpen && (
-          <div className="pointer-events-auto bg-white/95 backdrop-blur-md p-3.5 rounded-xl shadow-xl border border-slate-200 text-xs space-y-3 max-w-md ml-auto">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-200">
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-[#0B3D6E]" />
-                <span>Cadastral GIS Basemap & Orthophoto</span>
-              </span>
-              <button
-                onClick={() => setIsLayerControlOpen(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Basemap Selection */}
-            <div className="space-y-1">
-              <span className="text-[11px] text-slate-500 font-medium block">Basemap Provider:</span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 font-medium text-[11px]">
-                <button
-                  onClick={() => setBasemap('carto_voyager')}
-                  className={`p-2 rounded-lg border text-center transition-all ${
-                    basemap === 'carto_voyager'
-                      ? 'bg-blue-50 border-[#0B3D6E] text-[#0B3D6E] font-bold ring-1 ring-[#0B3D6E]'
-                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="block font-bold">Carto Voyager</span>
-                  <span className="text-[9px] text-emerald-600 block">✓ Key Connected</span>
-                </button>
-                <button
-                  onClick={() => setBasemap('carto_light')}
-                  className={`p-2 rounded-lg border text-center transition-all ${
-                    basemap === 'carto_light'
-                      ? 'bg-blue-50 border-[#0B3D6E] text-[#0B3D6E] font-bold ring-1 ring-[#0B3D6E]'
-                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="block font-bold">Carto Light</span>
-                  <span className="text-[9px] text-emerald-600 block">✓ Key Connected</span>
-                </button>
-                <button
-                  onClick={() => setBasemap('satellite')}
-                  className={`p-2 rounded-lg border text-center transition-all ${
-                    basemap === 'satellite'
-                      ? 'bg-blue-50 border-[#0B3D6E] text-[#0B3D6E] font-bold ring-1 ring-[#0B3D6E]'
-                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="block font-bold">Esri Satellite</span>
-                  <span className="text-[9px] text-slate-500 block">Orthophoto 🛰️</span>
-                </button>
-                <button
-                  onClick={() => setBasemap('streets')}
-                  className={`p-2 rounded-lg border text-center transition-all ${
-                    basemap === 'streets'
-                      ? 'bg-blue-50 border-[#0B3D6E] text-[#0B3D6E] font-bold ring-1 ring-[#0B3D6E]'
-                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="block font-bold">OSM Streets</span>
-                  <span className="text-[9px] text-slate-500 block">Vector Roads</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Cadastral Polygon Opacity Slider */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-600 font-medium">Cadastre Fill Opacity:</span>
-                <span className="font-mono font-bold text-slate-800">{Math.round(polygonOpacity * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min="0.1"
-                max="0.9"
-                step="0.05"
-                value={polygonOpacity}
-                onChange={(e) => setPolygonOpacity(parseFloat(e.target.value))}
-                className="w-full accent-[#0B3D6E] cursor-pointer"
-              />
-              <span className="text-[10px] text-slate-400 block">
-                Adjust opacity to visually compare survey boundaries against ground physical structures.
-              </span>
-            </div>
-
-            {/* Eco Buffer Toggle */}
-            <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
-              <div>
-                <span className="font-semibold text-slate-800 block text-xs">Stormwater / Encroachment Buffers</span>
-                <span className="text-[10px] text-slate-500">Show 65m waterbody / NGT restriction zone rings</span>
-              </div>
+          <div className="space-y-2 text-[#334155]">
+            <label className="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+              <span>{t('mapLayerBoundaries')}</span>
               <input
                 type="checkbox"
-                checked={showEcoBuffer}
-                onChange={(e) => setShowEcoBuffer(e.target.checked)}
-                className="w-4 h-4 text-[#0B3D6E] rounded"
+                checked={layerBoundaries}
+                onChange={(e) => setLayerBoundaries(e.target.checked)}
+                className="rounded text-[#0B3D6E] focus:ring-[#0B3D6E]"
               />
-            </div>
+            </label>
 
-            {/* Dynamic Proj4 CRS & Geodetic Datum Reconciliation Engine */}
-            <div className="pt-2 border-t border-slate-200 space-y-2">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                  <Cpu className="w-3.5 h-3.5 text-[#0B3D6E]" />
-                  <span>Proj4 Dynamic CRS Engine:</span>
-                </span>
-                <span className="font-mono text-[9px] text-emerald-800 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-300">
-                  {selectedCrs} ➔ EPSG:3857 Synced
-                </span>
-              </div>
+            <label className="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+              <span>{t('mapLayerZoning')}</span>
+              <input
+                type="checkbox"
+                checked={layerZoning}
+                onChange={(e) => setLayerZoning(e.target.checked)}
+                className="rounded text-[#0B3D6E] focus:ring-[#0B3D6E]"
+              />
+            </label>
 
-              {/* CRS Selector Dropdown */}
-              <div className="space-y-1">
-                <label className="text-[10px] text-slate-500 font-medium block">
-                  Source Cadastral Coordinate Reference System (CRS):
-                </label>
-                <select
-                  value={selectedCrs}
-                  onChange={(e) => setSelectedCrs(e.target.value as CadastralCrsType)}
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded p-1.5 text-slate-800 font-semibold focus:outline-hidden focus:ring-1 focus:ring-[#0B3D6E]"
+            <label className="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+              <span>{t('mapLayerOwnership')}</span>
+              <input
+                type="checkbox"
+                checked={layerOwnership}
+                onChange={(e) => setLayerOwnership(e.target.checked)}
+                className="rounded text-[#0B3D6E] focus:ring-[#0B3D6E]"
+              />
+            </label>
+
+            <label className="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+              <span className="text-rose-900 font-semibold">{t('mapLayerCourtDisputes')}</span>
+              <input
+                type="checkbox"
+                checked={layerCourtDisputes}
+                onChange={(e) => setLayerCourtDisputes(e.target.checked)}
+                className="rounded text-rose-600 focus:ring-rose-500"
+              />
+            </label>
+
+            <label className="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+              <span className="text-emerald-900">{t('mapLayerEcoBuffer')}</span>
+              <input
+                type="checkbox"
+                checked={layerEcoBuffer}
+                onChange={(e) => setLayerEcoBuffer(e.target.checked)}
+                className="rounded text-emerald-600 focus:ring-emerald-500"
+              />
+            </label>
+
+            <label className="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-1.5 rounded">
+              <span className="text-rose-900 font-semibold">{t('mapLayerOverlapEvidence')}</span>
+              <input
+                type="checkbox"
+                checked={layerOverlapEvidence}
+                onChange={(e) => setLayerOverlapEvidence(e.target.checked)}
+                className="rounded text-rose-600 focus:ring-rose-500"
+              />
+            </label>
+          </div>
+
+          {/* Clean Basemap Switcher (No CARTO keys, OpenStreetMap Default) */}
+          <div className="pt-2 border-t border-slate-100">
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+              {t('basemapProvider')}
+            </span>
+            <div className="grid grid-cols-3 gap-1">
+              {(['osm', 'esri_streets', 'esri_satellite'] as BasemapType[]).map((b) => (
+                <button
+                  key={b}
+                  onClick={() => setBasemap(b)}
+                  className={`py-1.5 px-1 rounded text-[10px] font-semibold transition-colors truncate cursor-pointer ${
+                    basemap === b ? 'bg-[#0B3D6E] text-white shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                  title={BASEMAP_PROVIDERS[b].name}
                 >
-                  <option value="EPSG:4326">EPSG:4326 — WGS 84 Geodetic (Bhu-Aadhaar Native)</option>
-                  <option value="EPSG:24379">EPSG:24379 — Kalianpur 1975 / SoI Zone IIa (7-Param Helmert Reconciled)</option>
-                  <option value="EPSG:32643">EPSG:32643 — WGS 84 / UTM Zone 43N (Projected West India)</option>
-                  <option value="EPSG:32644">EPSG:32644 — WGS 84 / UTM Zone 44N (Projected Central & South India)</option>
-                  <option value="EPSG:32645">EPSG:32645 — WGS 84 / UTM Zone 45N (Projected East India)</option>
-                </select>
-                <p className="text-[9px] text-slate-500 leading-tight">
-                  {activeCrsMeta.description}
-                </p>
-              </div>
+                  {b === 'osm' ? 'OSM Standard' : b === 'esri_streets' ? 'Esri Streets' : 'Satellite'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
-              {/* Auto UTM Zone Checkbox */}
-              <div className="flex items-center justify-between text-[10px] pt-1">
-                <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-medium">
-                  <input
-                    type="checkbox"
-                    checked={enableAutoUtm}
-                    onChange={(e) => setEnableAutoUtm(e.target.checked)}
-                    className="w-3.5 h-3.5 text-[#0B3D6E] rounded"
-                  />
-                  <span>Auto-detect Indian UTM Grid Zone by Parcel Longitude</span>
-                </label>
-                <span className="font-mono text-[9px] text-slate-400">
-                  Accuracy: ±{activeCrsMeta.accuracyMeters}m
+      {/* Hover Card (ULPIN, masked owner, flag count) */}
+      {hoveredParcel && (
+        <div className="absolute top-18 left-4 z-20 bg-white/95 backdrop-blur-xs rounded-xl shadow-lg border border-[#CBD5E1] p-3 max-w-xs pointer-events-none animate-in fade-in duration-100">
+          <PlotTag ulpin={hoveredParcel.ulpin} size="sm" showCopy={false} />
+          <div className="mt-2 space-y-0.5 text-xs text-[#334155]">
+            <p><strong>{t('surveyNumberLabel')}</strong> {hoveredParcel.surveyNumber}</p>
+            <p><strong>{t('ownerNameLabel')}</strong> {hoveredParcel.ownership.ownerName}</p>
+            <p><strong>{t('zoningCategoryLabel')}</strong> {hoveredParcel.zoning?.masterPlanClassification || 'N/A'}</p>
+            <div className="pt-1 flex items-center gap-1.5">
+              <Chip
+                size="sm"
+                severity={hoveredParcel.encumbrance.disputeFlag ? 'court' : 'clear'}
+                label={hoveredParcel.encumbrance.disputeFlag ? t('civilCourtInjunction') : t('clearTitle')}
+              />
+              {computeParcelFlags(hoveredParcel).length > 0 && (
+                <span className="text-[10px] font-mono text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                  {computeParcelFlags(hoveredParcel).length} {t('ruleFlags')}
                 </span>
-              </div>
-
-              {/* Geodetic Mathematical Telemetry Box */}
-              <div className="p-2 bg-slate-100/90 rounded border border-slate-200 text-[9px] font-mono text-slate-700 space-y-0.5">
-                <div className="flex justify-between">
-                  <span>Datum / Ellipsoid:</span>
-                  <span className="font-bold text-slate-900">{activeCrsMeta.datum}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Mercator Conformal Scale (k₀):</span>
-                  <span className="font-bold text-emerald-800">{convergence.scaleFactor}</span>
-                </div>
-                {activeCrsMeta.helmertApplied && (
-                  <div className="text-amber-800 font-bold flex justify-between">
-                    <span>Helmert Shift Vector:</span>
-                    <span>ΔX:+295m ΔY:+736m ΔZ:+257m</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-slate-500">
-                  <span>Base Layer Canvas:</span>
-                  <span>EPSG:3857 (Spherical Web Mercator)</span>
-                </div>
-              </div>
-
-              {/* Datum Nudge & Auto-Snap Buttons */}
-              <div className="space-y-1 pt-1">
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-slate-500 font-medium">Geodetic Micro-Calibration:</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDatumShift({ x: 0, y: 0 });
-                      setSelectedCrs('EPSG:4326');
-                    }}
-                    className="text-[10px] text-[#0B3D6E] hover:underline font-bold flex items-center gap-1"
-                  >
-                    <RefreshCw className="w-2.5 h-2.5" />
-                    <span>Reconcile & Snap</span>
-                  </button>
-                </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setDatumShift(prev => ({ ...prev, x: prev.x - 5 }))}
-                    className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-[10px] font-mono border"
-                    title="Shift 5m West"
-                  >
-                    ← W 5m
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDatumShift(prev => ({ ...prev, x: prev.x + 5 }))}
-                    className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-[10px] font-mono border"
-                    title="Shift 5m East"
-                  >
-                    E 5m →
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDatumShift(prev => ({ ...prev, y: prev.y + 5 }))}
-                    className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-[10px] font-mono border"
-                    title="Shift 5m North"
-                  >
-                    ↑ N 5m
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDatumShift(prev => ({ ...prev, y: prev.y - 5 }))}
-                    className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-[10px] font-mono border"
-                    title="Shift 5m South"
-                  >
-                    ↓ S 5m
-                  </button>
-                  {(datumShift.x !== 0 || datumShift.y !== 0) && (
-                    <button
-                      type="button"
-                      onClick={() => setDatumShift({ x: 0, y: 0 })}
-                      className="px-2 py-0.5 bg-blue-50 text-[#0B3D6E] rounded text-[10px] font-bold border border-blue-200"
-                    >
-                      Reset (0,0)
-                    </button>
-                  )}
-                </div>
-              </div>
+              )}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* No Results Found Notification */}
-        {noResultsFound && (
-          <div className="pointer-events-auto bg-amber-50 border border-amber-200 text-amber-900 rounded-lg p-2.5 text-xs shadow-md flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>
-                No cadastral parcels matched <strong>"{searchQuery}"</strong> in the current 26-parcel pilot registry.
-              </span>
+      {/* Map Legend (Bottom Left, isolated from zoom control at bottom right) */}
+      <div className="absolute bottom-4 left-4 z-20 bg-white/95 backdrop-blur-xs rounded-xl shadow-md border border-[#CBD5E1] p-3 text-xs space-y-2 max-w-xs">
+        <h5 className="font-semibold text-[#0B3D6E] text-[11px] uppercase tracking-wider">
+          {t('mapLegendTitle')}
+        </h5>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] text-slate-700">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-xs bg-[#0284C7] opacity-80 border border-[#0284C7]" />
+            <span>{t('landUseResidential')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-xs bg-[#4F46E5] opacity-80 border border-[#4F46E5]" />
+            <span>{t('landUseCommercial')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-xs bg-[#D97706] opacity-80 border border-[#D97706]" />
+            <span>{t('landUseIndustrial')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-xs bg-[#059669] opacity-80 border border-[#059669]" />
+            <span>{t('mapLayerEcoBuffer')}</span>
+          </div>
+          <div className="flex items-center gap-2 col-span-2">
+            <span className="w-4 h-3 rounded-xs bg-rose-500 border border-rose-700 border-dashed opacity-85" />
+            <span className="text-rose-900 font-semibold">{t('mapLayerCourtDisputes')}</span>
+          </div>
+        </div>
+
+        {/* Foldable Advanced Proj4 / CRS Section */}
+        <div className="pt-2 border-t border-slate-100">
+          <button
+            onClick={() => setIsAdvancedCrsOpen(!isAdvancedCrsOpen)}
+            className="flex items-center justify-between w-full text-[10px] text-slate-500 font-semibold hover:text-[#0B3D6E] cursor-pointer"
+          >
+            <span>{t('mapCrsAdvanced')} (EPSG:4326)</span>
+            {isAdvancedCrsOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+          {isAdvancedCrsOpen && (
+            <div className="mt-2 space-y-1 text-[10px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-200">
+              <p><strong>Ellipsoid:</strong> WGS84 Geodetic</p>
+              <p><strong>EPSG:</strong> 4326 (Lon/Lat Decimal Degrees)</p>
+              <p><strong>Cadastral Grid:</strong> 14-Digit Bhu-Aadhaar Centroid</p>
             </div>
-            <button
-              onClick={() => handleSearch('')}
-              className="text-amber-800 font-semibold underline text-xs"
+          )}
+        </div>
+      </div>
+
+      {/* FILTERS DRAWER */}
+      <Drawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setIsFilterDrawerOpen(false)}
+        title={t('mapFilterDrawerTitle')}
+        subtitle={t('filterDrawerSubtitle')}
+      >
+        <div className="space-y-6 text-sm">
+          {/* City / Jurisdiction Preset */}
+          <div>
+            <label className="font-semibold text-slate-800 block mb-2">
+              {t('filterMetro')}
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {CITY_PRESETS.map((c) => (
+                <button
+                  key={c.name}
+                  onClick={() => setActiveCity(c.name)}
+                  className={`py-2 px-3 rounded-lg border text-xs font-semibold text-left transition-colors cursor-pointer ${
+                    activeCity === c.name
+                      ? 'bg-[#0B3D6E] text-white border-[#0B3D6E] shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Filter Checkboxes */}
+          <div className="space-y-3 pt-4 border-t border-slate-100">
+            <h4 className="font-semibold text-slate-800">{t('anomalyLegalFilters')}</h4>
+            <label className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showCourtDisputesOnly}
+                onChange={(e) => setShowCourtDisputesOnly(e.target.checked)}
+                className="rounded text-rose-600 focus:ring-rose-500 w-4 h-4"
+              />
+              <div>
+                <span className="font-semibold text-rose-900 block text-xs">{t('filterDisputed')}</span>
+                <span className="text-[11px] text-slate-500">{t('parcelsWithStayOrders')}</span>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showRuleFlagsOnly}
+                onChange={(e) => setShowRuleFlagsOnly(e.target.checked)}
+                className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4"
+              />
+              <div>
+                <span className="font-semibold text-amber-900 block text-xs">{t('filterFlagged')}</span>
+                <span className="text-[11px] text-slate-500">{t('parcelsWithRuleFlags')}</span>
+              </div>
+            </label>
+          </div>
+
+          {/* Master Plan Zoning Filter */}
+          <div className="space-y-2 pt-4 border-t border-slate-100">
+            <label className="font-semibold text-slate-800 block">
+              {t('zoningClassification')}
+            </label>
+            <select
+              value={selectedZoningFilter}
+              onChange={(e) => setSelectedZoningFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#0B3D6E]"
             >
-              Reset Search
-            </button>
+              <option value="ALL">{t('allZonalMasterPlans')}</option>
+              <option value="RESIDENTIAL">Residential (Urban/R1)</option>
+              <option value="COMMERCIAL">Commercial (Zonal/C2)</option>
+              <option value="INDUSTRIAL">Industrial / Tech Park</option>
+              <option value="AGRICULTURAL">Agricultural / Green Belt</option>
+            </select>
           </div>
-        )}
-      </div>
 
-      {/* Real Full Screen Leaflet GIS Map */}
-      <div ref={mapContainerRef} className="w-full h-full z-0" />
-
-      {/* Floating Bottom Left Cadastral Map Legend */}
-      <div className="absolute bottom-6 left-4 z-20 bg-white/95 backdrop-blur-md p-3 rounded-lg shadow-md border border-slate-200 text-xs max-w-xs hidden sm:block">
-        <div className="font-semibold text-slate-800 mb-1.5 flex items-center gap-1.5">
-          <Layers className="w-3.5 h-3.5 text-[#0B3D6E]" />
-          <span>KSHETRA OS Spatial Cadastre</span>
-        </div>
-        <div className="space-y-1 text-[11px]">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-xs bg-[#0B3D6E] border border-blue-900 shrink-0" />
-            <span className="text-slate-700">Clear Title / Freehold Parcel</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-xs bg-rose-600 border border-rose-800 shrink-0" />
-            <span className="text-slate-700">Active Legal Dispute / Stay Order</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-xs bg-amber-500 border border-amber-700 shrink-0" />
-            <span className="text-slate-700">Zoning Inconsistency Flag</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-xs bg-slate-500 border border-slate-700 shrink-0" />
-            <span className="text-slate-700">Industrial / Public Sector Estate</span>
+          <div className="pt-4 border-t border-slate-100 flex justify-between gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setActiveCity('All India');
+                setShowCourtDisputesOnly(false);
+                setShowRuleFlagsOnly(false);
+                setSelectedZoningFilter('ALL');
+              }}
+            >
+              {t('resetFilters')}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsFilterDrawerOpen(false)}
+            >
+              {t('applyBtn')} ({searchResults.length} {t('navCadastre')})
+            </Button>
           </div>
         </div>
-        <div className="mt-2 pt-2 border-t border-slate-200 text-[10px] text-slate-500 flex items-center justify-between">
-          <span>CRS: EPSG:4326</span>
-          <span className="font-mono">{searchResults.length} Parcels Displayed</span>
-        </div>
-      </div>
+      </Drawer>
     </div>
   );
 };

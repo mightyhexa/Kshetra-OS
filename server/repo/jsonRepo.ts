@@ -72,7 +72,7 @@ export class JsonFileRepository implements IRepository {
       if (filter.flagged) {
         list = list.filter(p => {
           const risks = evaluateParcelRisks(p, this.state!.parcels, this.state!.waterbodies);
-          return risks.length > 0;
+          return risks.some(f => f.severity === 'amber' || f.severity === 'rose');
         });
       }
       if (filter.q) {

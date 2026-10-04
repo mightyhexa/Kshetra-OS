@@ -8,7 +8,26 @@ import { uploadMiddleware, ingestDocument, validateMagicBytes } from '../service
 export const documentsRouter = Router();
 
 // POST /api/documents/upload
-documentsRouter.post('/upload', requireAuth, uploadMiddleware.single('file'), async (req: Request, res: Response) => {
+documentsRouter.post('/upload', requireAuth, (req: Request, res: Response, next: any) => {
+  uploadMiddleware.single('file')(req, res, (err: any) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({
+          success: false,
+          error: {
+            code: 'FILE_TOO_LARGE',
+            message: 'File size exceeds statutory 5MB limit.'
+          }
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        error: { message: err.message || 'File upload failed.' }
+      });
+    }
+    next();
+  });
+}, async (req: Request, res: Response) => {
   if (!req.file) {
     res.status(400).json({
       success: false,

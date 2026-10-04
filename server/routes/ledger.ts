@@ -8,6 +8,7 @@ import {
   clearTamperOverlay, 
   getTamperOverlayState 
 } from '../services/ledgerService';
+import { serializeLedgerBlock } from '../services/serializers';
 
 export const ledgerRouter = Router();
 
@@ -29,10 +30,11 @@ ledgerRouter.get('/', requireAuth, async (req: Request, res: Response) => {
     );
   }
 
+  const role = req.user!.role;
   const total = filtered.length;
   const totalPages = Math.ceil(total / limit) || 1;
   const start = (page - 1) * limit;
-  const paginated = filtered.slice(start, start + limit);
+  const paginated = filtered.slice(start, start + limit).map(b => serializeLedgerBlock(b, role));
 
   res.json({
     success: true,
@@ -57,6 +59,7 @@ const handleVerify = async (req: Request, res: Response) => {
     reason: result.reason,
     timestamp: result.timestamp,
     tamperSimulationActive: getTamperOverlayState().active,
+    data: result,
     result // backward compatibility with client
   });
 };
@@ -87,7 +90,7 @@ const handleTamperDemo = async (req: Request, res: Response) => {
 };
 
 ledgerRouter.post('/tamper-demo', requireAuth, requireRole(['policy_admin']), handleTamperDemo);
-ledgerRouter.post('/tamper', requireAuth, handleTamperDemo); // alias for UI convenience
+ledgerRouter.post('/tamper', requireAuth, requireRole(['policy_admin']), handleTamperDemo); // alias for UI convenience
 
 // POST /api/ledger/tamper-reset
 const handleTamperReset = async (req: Request, res: Response) => {
@@ -99,8 +102,8 @@ const handleTamperReset = async (req: Request, res: Response) => {
   });
 };
 
-ledgerRouter.post('/tamper-reset', requireAuth, handleTamperReset);
-ledgerRouter.post('/reset', requireAuth, handleTamperReset); // alias for UI convenience
+ledgerRouter.post('/tamper-reset', requireAuth, requireRole(['policy_admin']), handleTamperReset);
+ledgerRouter.post('/reset', requireAuth, requireRole(['policy_admin']), handleTamperReset); // alias for UI convenience
 
 // GET /api/ledger/export
 ledgerRouter.get('/export', requireAuth, async (req: Request, res: Response) => {

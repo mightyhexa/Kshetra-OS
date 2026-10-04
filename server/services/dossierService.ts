@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
 import { Parcel, UserRole } from '../../shared/types';
+import { config } from '../config';
 import { repository } from '../repo';
 import { serializeParcel } from './serializers';
 import { evaluateParcelRisks } from './riskEngine';
@@ -41,7 +42,8 @@ export async function generateDossierPdf(params: {
   const generatedAt = new Date().toISOString();
 
   // 3. Generate QR Code linking to verification
-  const qrTargetUrl = `https://kshetra.dpi.gov.in/verify?docId=${documentId}&ulpin=${parcel.ulpin}`;
+  const baseUrl = config.publicBaseUrl.replace(/\/$/, '');
+  const qrTargetUrl = `${baseUrl}/verify?docId=${documentId}&ulpin=${parcel.ulpin}`;
   const qrBuffer = await QRCode.toBuffer(qrTargetUrl, {
     width: 110,
     margin: 1,
@@ -112,13 +114,16 @@ export async function generateDossierPdf(params: {
   doc.fontSize(9).fillColor('#0B3D6E').font('Helvetica-Bold').text(' 2. REVENUE REGISTRY & LEGAL TITLE DEEDS', 45, doc.y + 4);
   doc.moveDown(0.8);
 
-  doc.font('Helvetica').fontSize(9).fillColor('#1E293B');
-  doc.text(`Primary Title Holder: `, 45, doc.y, { continued: true }).font('Helvetica-Bold').text(serialized.ownership.ownerName);
-  doc.font('Helvetica').text(`Registration Date: `, 45, doc.y, { continued: true }).font('Helvetica-Bold').text(serialized.ownership.registrationDate);
-  doc.font('Helvetica').text(`Registration Reg No: `, 45, doc.y, { continued: true }).font('Helvetica-Bold').text(`${serialized.ownership.registrationNumber} (SRO: ${serialized.ownership.subRegistrarOffice})`);
+  const ownership = serialized.ownership || parcel.ownership;
+  const encumbrance = serialized.encumbrance || parcel.encumbrance;
 
-  if (role !== 'citizen' && serialized.ownership.coOwners) {
-    doc.font('Helvetica').text(`Co-Owners: `, 45, doc.y, { continued: true }).font('Helvetica-Bold').text(serialized.ownership.coOwners.join(', '));
+  doc.font('Helvetica').fontSize(9).fillColor('#1E293B');
+  doc.text(`Primary Title Holder: `, 45, doc.y, { continued: true }).font('Helvetica-Bold').text(ownership?.ownerName || 'N/A');
+  doc.font('Helvetica').text(`Registration Date: `, 45, doc.y, { continued: true }).font('Helvetica-Bold').text(ownership?.registrationDate || 'N/A');
+  doc.font('Helvetica').text(`Registration Reg No: `, 45, doc.y, { continued: true }).font('Helvetica-Bold').text(`${ownership?.registrationNumber || 'N/A'} (SRO: ${ownership?.subRegistrarOffice || 'N/A'})`);
+
+  if (role !== 'citizen' && ownership?.coOwners) {
+    doc.font('Helvetica').text(`Co-Owners: `, 45, doc.y, { continued: true }).font('Helvetica-Bold').text(ownership.coOwners.join(', '));
   } else if (role === 'citizen') {
     doc.font('Helvetica-Oblique').fontSize(8).fillColor('#64748B').text('* Co-owner personal identities protected under citizen data masking (Layer 2).', 45, doc.y);
     doc.font('Helvetica').fontSize(9).fillColor('#1E293B');
@@ -127,16 +132,16 @@ export async function generateDossierPdf(params: {
   // Encumbrance
   doc.moveDown(0.5);
   doc.text(`Encumbrance Status: `, 45, doc.y, { continued: true }).font('Helvetica-Bold').text(
-    serialized.encumbrance.disputeFlag ? 'ACTIVE JUDICIAL LITIGATION' : serialized.encumbrance.hasMortgage ? 'MORTGAGED' : 'CLEAR TITLE / NIL ENCUMBRANCE'
+    encumbrance?.disputeFlag ? 'ACTIVE JUDICIAL LITIGATION' : encumbrance?.hasMortgage ? 'MORTGAGED' : 'CLEAR TITLE / NIL ENCUMBRANCE'
   );
 
-  if (role !== 'citizen') {
-    if (serialized.encumbrance.courtCaseNumber) {
-      doc.font('Helvetica').text(`Civil Case Docket: `, 45, doc.y, { continued: true }).font('Helvetica-Bold').text(`${serialized.encumbrance.courtCaseNumber} (Stay: ${serialized.encumbrance.stayOrderDetails || 'Active'})`);
+  if (role !== 'citizen' && encumbrance) {
+    if (encumbrance.courtCaseNumber) {
+      doc.font('Helvetica').text(`Civil Case Docket: `, 45, doc.y, { continued: true }).font('Helvetica-Bold').text(`${encumbrance.courtCaseNumber} (Stay: ${encumbrance.stayOrderDetails || 'Active'})`);
     }
-    if (serialized.encumbrance.mortgageDetails) {
+    if (encumbrance.mortgageDetails) {
       doc.font('Helvetica').text(`Registered Mortgage Lien: `, 45, doc.y, { continued: true }).font('Helvetica-Bold').text(
-        `${serialized.encumbrance.mortgageDetails.lenderName} — ₹${serialized.encumbrance.mortgageDetails.loanAmountInr.toLocaleString('en-IN')}`
+        `${encumbrance.mortgageDetails.lenderName} — ₹${encumbrance.mortgageDetails.loanAmountInr.toLocaleString('en-IN')}`
       );
     }
   }

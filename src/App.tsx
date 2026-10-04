@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { LanguageProvider } from './context/LanguageContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import { ToastProvider } from './components/ui/Toast';
 import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
 import { LoginPage } from './components/LoginPage';
 import { SplashLoader } from './components/SplashLoader';
 import { MapSearchView } from './components/MapSearchView';
@@ -9,12 +11,16 @@ import { ParcelDetailPanel } from './components/ParcelDetailPanel';
 import { CitizenServiceView } from './components/CitizenServiceView';
 import { OfficerDashboard } from './components/OfficerDashboard';
 import { AuditLedgerView } from './components/AuditLedgerView';
+import { DocumentVerificationView } from './components/DocumentVerificationView';
 import { UserProfileModal } from './components/UserProfileModal';
+
+const AnalyticsView = React.lazy(() => import('./components/AnalyticsView').then(m => ({ default: m.AnalyticsView })));
 import { ApiInspectorModal } from './components/ApiInspectorModal';
 import { TechnicalDocumentModal } from './components/TechnicalDocumentModal';
 import { FeaturesRoadmapModal } from './components/FeaturesRoadmapModal';
 import { DigitalCertificateModal } from './components/DigitalCertificateModal';
 import { GovernmentDossierModal } from './components/GovernmentDossierModal';
+import { GuidedDemoModal } from './components/GuidedDemoModal';
 import { CadastralSubdivisionModal } from './components/CadastralSubdivisionModal';
 import { TemporalChangeDetectionModal } from './components/TemporalChangeDetectionModal';
 import { TitleClarityScoreModal } from './components/TitleClarityScoreModal';
@@ -22,15 +28,17 @@ import { BhashiniVoiceAssistantModal } from './components/BhashiniVoiceAssistant
 import { LoginModal } from './components/LoginModal';
 import { apiClient } from './services/apiClient';
 import { Parcel } from './types';
+import { ChevronRight, Home } from 'lucide-react';
 
 function MainAppContent() {
   const { currentRole, isAuthenticated, logout } = useAuth();
+  const { t } = useLanguage();
 
   // Animated Splash Boot Screen State
   const [showSplash, setShowSplash] = useState<boolean>(true);
 
   // Tab & Selection State
-  const [activeTab, setActiveTab] = useState<'map' | 'citizen' | 'officer' | 'audit'>('map');
+  const [activeTab, setActiveTab] = useState<'map' | 'citizen' | 'officer' | 'audit' | 'verify' | 'analytics'>('map');
   const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
   const [preselectedUlpinForService, setPreselectedUlpinForService] = useState<string | undefined>(undefined);
 
@@ -49,6 +57,16 @@ function MainAppContent() {
   const [isVoiceAssistantOpen, setIsVoiceAssistantOpen] = useState(false);
   const [activeToolParcel, setActiveToolParcel] = useState<Parcel | null>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isGuidedDemoOpen, setIsGuidedDemoOpen] = useState(false);
+
+  // Role Gate Enforcement: Never allow unauthorized tabs when role switches or tours exit
+  useEffect(() => {
+    if (activeTab === 'analytics' && currentRole !== 'policy_admin') {
+      setActiveTab('map');
+    } else if (activeTab === 'officer' && currentRole === 'citizen') {
+      setActiveTab('map');
+    }
+  }, [currentRole, activeTab]);
 
   // Action: Initiate service request from parcel panel
   const handleInitiateServiceRequest = (ulpin: string) => {
@@ -106,7 +124,7 @@ function MainAppContent() {
     return <SplashLoader onComplete={() => setShowSplash(false)} />;
   }
 
-  // If not authenticated, show the official government entry Login Page!
+  // If not authenticated, show official government entry Login Page!
   if (!isAuthenticated) {
     return (
       <LoginPage
@@ -116,8 +134,17 @@ function MainAppContent() {
     );
   }
 
+  const tabLabels: Record<string, string> = {
+    map: t('navCadastre'),
+    citizen: t('navCitizenServices'),
+    officer: t('navOfficerConsole'),
+    audit: t('navAuditLedger'),
+    verify: t('navVerifyDoc'),
+    analytics: t('navAnalytics')
+  };
+
   return (
-    <div className="min-h-screen bg-[#F7F8FA] text-slate-800 flex flex-col antialiased selection:bg-blue-100 selection:text-[#0B3D6E]">
+    <div className="min-h-screen bg-[#F7F8FA] survey-grid-canvas text-[#0F172A] flex flex-col antialiased selection:bg-blue-100 selection:text-[#0B3D6E]">
       {/* Top Navbar Header */}
       <Navbar
         activeTab={activeTab}
@@ -126,11 +153,29 @@ function MainAppContent() {
         onOpenApiInspector={() => setIsApiInspectorOpen(true)}
         onOpenTechDoc={() => setIsTechDocOpen(true)}
         onOpenRoadmap={() => setIsRoadmapOpen(true)}
+        onStartGuidedDemo={() => setIsGuidedDemoOpen(true)}
         onLogout={logout}
       />
 
+      {/* Accessible Breadcrumbs Bar on inner pages */}
+      {activeTab !== 'map' && (
+        <nav aria-label="Breadcrumb" className="bg-white/80 border-b border-[#E2E8F0] px-4 sm:px-6 py-2 text-xs text-[#64748B]">
+          <div className="max-w-7xl mx-auto flex items-center gap-1.5">
+            <button
+              onClick={() => setActiveTab('map')}
+              className="inline-flex items-center gap-1 hover:text-[#0B3D6E] cursor-pointer"
+            >
+              <Home className="w-3.5 h-3.5 text-[#0B3D6E]" />
+              <span>National Cadastre</span>
+            </button>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className="font-semibold text-[#0B3D6E]">{tabLabels[activeTab]}</span>
+          </div>
+        </nav>
+      )}
+
       {/* Main View Body */}
-      <main id="main-content" className="flex-1 relative overflow-x-hidden">
+      <main id="main-content" className="flex-1 relative overflow-hidden flex flex-col min-h-0">
         {activeTab === 'map' && (
           <MapSearchView
             selectedParcel={selectedParcel}
@@ -157,6 +202,16 @@ function MainAppContent() {
           <AuditLedgerView />
         )}
 
+        {activeTab === 'verify' && (
+          <DocumentVerificationView />
+        )}
+
+        {activeTab === 'analytics' && (
+          <React.Suspense fallback={<div className="p-8"><div className="w-8 h-8 rounded-full border-4 border-[#0B3D6E] border-t-transparent animate-spin mx-auto" /></div>}>
+            <AnalyticsView />
+          </React.Suspense>
+        )}
+
         {/* Slide-over Parcel Detail Panel */}
         <ParcelDetailPanel
           parcel={selectedParcel}
@@ -172,6 +227,9 @@ function MainAppContent() {
           onOpenDossier={handleOpenDossier}
         />
       </main>
+
+      {/* Accessible Footer on inner content pages */}
+      {activeTab !== 'map' && <Footer />}
 
       {/* Modals & Dialogs */}
       <UserProfileModal
@@ -238,13 +296,11 @@ function MainAppContent() {
         onClose={() => setIsLoginModalOpen(false)}
       />
 
-      {/* Persistent Floating Prototype Badge */}
-      <div className="fixed bottom-3 right-3 z-40 pointer-events-none">
-        <div className="bg-slate-900/90 text-white backdrop-blur-xs px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide border border-slate-700 shadow-md flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-          <span>Prototype • Synthetic Data • Simulated Login</span>
-        </div>
-      </div>
+      <GuidedDemoModal
+        isOpen={isGuidedDemoOpen}
+        onClose={() => setIsGuidedDemoOpen(false)}
+        onNavigateTab={(tab) => setActiveTab(tab)}
+      />
     </div>
   );
 }
@@ -253,7 +309,9 @@ export default function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <MainAppContent />
+        <ToastProvider>
+          <MainAppContent />
+        </ToastProvider>
       </AuthProvider>
     </LanguageProvider>
   );

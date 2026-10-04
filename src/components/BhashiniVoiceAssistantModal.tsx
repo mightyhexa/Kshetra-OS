@@ -27,8 +27,8 @@ export const BhashiniVoiceAssistantModal: React.FC<BhashiniVoiceAssistantModalPr
 
   const isDisputed = parcel.encumbrance.disputeFlag;
 
-  // Pan-India Vernacular Translations (Telugu removed as per user instruction)
-  const translations: Partial<Record<SupportedLanguage, { title: string; text: string; audioHint: string; speechLocale: string }>> = {
+  // Pan-India Vernacular Translations
+  const translations: Record<SupportedLanguage, { title: string; text: string; audioHint: string; speechLocale: string }> = {
     hi: {
       title: 'हिन्दी (Hindi)',
       text: `भू-अभिलेख विवरण: यह भूमि सर्वेक्षण संख्या ${parcel.surveyNumber}, ${parcel.villageWard}, ${parcel.district} में स्थित है। पंजीकृत स्वामी ${parcel.ownership.ownerName} हैं। कुल रकबा ${parcel.areaSqm} वर्ग मीटर (लगभग ${parcel.areaAcres} एकड़) है। स्थिति: ${isDisputed ? 'सावधान! इस भूखंड पर न्यायालय का विवाद या स्थगन आदेश दर्ज है।' : 'यह भूमि पूरी तरह से निर्विवाद और स्वच्छ स्वामित्व वाली है।'}`,
@@ -41,45 +41,15 @@ export const BhashiniVoiceAssistantModal: React.FC<BhashiniVoiceAssistantModalPr
       audioHint: 'Government of India Digital Public Infrastructure Voice Assistant',
       speechLocale: 'en-IN'
     },
-    bn: {
-      title: 'বাংলা (Bengali)',
-      text: `ভূমি রেকর্ডের সারাংশ: এই জমিটি দাগ নম্বর ${parcel.surveyNumber}, ${parcel.villageWard}, ${parcel.district} জেলায় অবস্থিত। নিবন্ধিত মালিক ${parcel.ownership.ownerName}। মোট পরিমাপ ${parcel.areaSqm} বর্গমিটার (${parcel.areaAcres} একর)। স্থিতি: ${isDisputed ? 'সতর্কতা! এই জমির ওপর আদালতের মামলা রয়েছে।' : 'সম্পূর্ণ নির্ভেজাল ও স্বত্বাধিকার সম্পন্ন জমি।'}`,
-      audioHint: 'ভাষিণী বাংলা ভয়েস সার্ভিস',
-      speechLocale: 'bn-IN'
-    },
-    mr: {
-      title: 'मराठी (Marathi)',
-      text: `जमीन अभिलेख माहिती: ही जमीन सर्व्हे क्रमांक ${parcel.surveyNumber}, ${parcel.villageWard}, ${parcel.district} येथे आहे. नोंदणीकृत मालक ${parcel.ownership.ownerName} आहेत. एकूण क्षेत्रफळ ${parcel.areaSqm} चौरस मीटर (${parcel.areaAcres} एकर). स्थिती: ${isDisputed ? 'सावधान! या जमिनीवर न्यायालयीन वाद सुरू आहे.' : 'सदर जमीन निर्विवाद व स्वच्छ मालकी हक्काची आहे.'}`,
-      audioHint: 'भाषिणी मराठी व्हॉइस असिस्टंट',
-      speechLocale: 'mr-IN'
-    },
-    ta: {
-      title: 'தமிழ் (Tamil)',
-      text: `நில ஆவண சுருக்கம்: இந்த நிலம் புல எண் ${parcel.surveyNumber}, ${parcel.villageWard}, ${parcel.district} மாவட்டத்தில் அமைந்துள்ளது. பதிவு செய்யப்பட்ட உரிமையாளர் ${parcel.ownership.ownerName}. மொத்த பரப்பளவு ${parcel.areaSqm} சதுர மீட்டர் (${parcel.areaAcres} ஏக்கர்). நிலை: ${isDisputed ? 'எச்சரிக்கை! இந்த நிலத்தின் மீது நீதிமன்ற வழக்கு நிலுவையில் உள்ளது.' : 'வில்லங்கங்கள் இல்லாத தெளிவான உரிமை கொண்ட நிலம்.'}`,
-      audioHint: 'பாஷினி தமிழ் குரல் சேவை',
-      speechLocale: 'ta-IN'
-    },
-    gu: {
-      title: 'ગુજરાતી (Gujarati)',
-      text: `જમીન રેકોર્ડ વિગતો: આ જમીન સર્વે નંબર ${parcel.surveyNumber}, ${parcel.villageWard}, ${parcel.district} માં આવેલી છે. નોંધાયેલ માલિક ${parcel.ownership.ownerName} છે. કુલ ક્ષેત્રફળ ${parcel.areaSqm} ચોરસ મીટર (${parcel.areaAcres} એકર). સ્થિતિ: ${isDisputed ? 'સાવધાન! આ જમીન પર કોર્ટ કેસ નોંધાયેલ છે.' : 'કોઈપણ વિવાદ વગરની સંપૂર્ણ સ્પષ્ટ માલિકીની જમીન.'}`,
-      audioHint: 'ભાષિણી ગુજરાતી અવાજ સહાયક',
-      speechLocale: 'gu-IN'
-    },
     kn: {
       title: 'ಕನ್ನಡ (Kannada)',
       text: `ಭೂದಾಖಲೆ ಸಾರಾಂಶ: ಈ ಜಮೀನು ಸರ್ವೆ ನಂಬರ್ ${parcel.surveyNumber}, ${parcel.villageWard}, ${parcel.district} ಜಿಲ್ಲೆಯಲ್ಲಿ ಬರುತ್ತದೆ. ನೋಂದಾಯಿತ ಮಾಲೀಕರು ${parcel.ownership.ownerName}. ಒಟ್ಟು ವಿಸ್ತೀರ್ಣ ${parcel.areaSqm} ಚದರ ಮೀಟರ್ (${parcel.areaAcres} ಎಕರೆ). ಸ್ಥಿತಿ: ${isDisputed ? 'ಎಚ್ಚರಿಕೆ! ಈ ಸರ್ವೆ ನಂಬರ್ ಮೇಲೆ ನ್ಯಾಯಾಲಯದ ವ್ಯಾಜ್ಯವಿದೆ.' : 'ಯಾವುದೇ ವಿವಾದವಿಲ್ಲದ ಸ್ವಚ್ಛ ಹಕ್ಕುಪತ್ರ ಹೊಂದಿರುವ ಜಮೀನು.'}`,
       audioHint: 'ಭಾಷಿಣಿ ಕನ್ನಡ ಧ್ವನಿ ವಿವರಣೆ',
       speechLocale: 'kn-IN'
-    },
-    pa: {
-      title: 'ਪੰਜਾਬੀ (Punjabi)',
-      text: `ਜ਼ਮੀਨੀ ਰਿਕਾਰਡ ਵੇਰਵਾ: ਇਹ ਜ਼ਮੀਨ ਖਸਰਾ ਨੰਬਰ ${parcel.surveyNumber}, ${parcel.villageWard}, ${parcel.district} ਵਿੱਚ ਸਥਿਤ ਹੈ। ਰਜਿਸਟਰਡ ਮਾਲਕ ${parcel.ownership.ownerName} ਹਨ। ਕੁੱਲ ਰਕਬਾ ${parcel.areaSqm} ਵਰਗ ਮੀਟਰ (${parcel.areaAcres} ਏਕੜ) ਹੈ। ਸਥਿਤੀ: ${isDisputed ? 'ਸਾਵਧਾਨ! ਇਸ ਜ਼ਮੀਨ ਉੱਤੇ ਅਦਾਲਤੀ ਵਿਵਾਦ ਦਰਜ ਹੈ।' : 'ਇਹ ਜ਼ਮੀਨ ਪੂਰੀ ਤਰ੍ਹਾਂ ਨਿਰਵਿਵਾਦ ਅਤੇ ਸਾਫ਼ ਮਾਲਕੀ ਵਾਲੀ ਹੈ।'}`,
-      audioHint: 'ਭਾਸ਼ਿਣੀ ਪੰਜਾਬੀ ਆਵਾਜ਼ ਸੇਵਾ',
-      speechLocale: 'pa-IN'
     }
   };
 
-  const activeTranslation = translations[selectedLang] || translations.hi || translations.en!;
+  const activeTranslation = translations[selectedLang] || translations.hi || translations.en;
 
   const handleTogglePlay = () => {
     if ('speechSynthesis' in window) {
@@ -158,19 +128,14 @@ export const BhashiniVoiceAssistantModal: React.FC<BhashiniVoiceAssistantModalPr
           </span>
           <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-lg text-xs font-semibold">
             {[
-              { code: 'hi', label: 'हिन्दी' },
-              { code: 'en', label: 'English' },
-              { code: 'bn', label: 'বাংলা' },
-              { code: 'mr', label: 'मराठी' },
-              { code: 'ta', label: 'தமிழ்' },
-              { code: 'gu', label: 'ગુજરાતી' },
-              { code: 'kn', label: 'ಕನ್ನಡ' },
-              { code: 'pa', label: 'ਪੰਜਾਬੀ' }
+              { code: 'hi' as SupportedLanguage, label: 'हिन्दी' },
+              { code: 'en' as SupportedLanguage, label: 'English' },
+              { code: 'kn' as SupportedLanguage, label: 'ಕನ್ನಡ' }
             ].map((item) => (
               <button
                 key={item.code}
-                onClick={() => handleSelectLang(item.code as SupportedLanguage)}
-                className={`py-1.5 rounded-md transition-all text-center ${
+                onClick={() => handleSelectLang(item.code)}
+                className={`py-1.5 rounded-md transition-all text-center cursor-pointer ${
                   selectedLang === item.code
                     ? 'bg-[#0B3D6E] text-white shadow-xs font-bold'
                     : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'

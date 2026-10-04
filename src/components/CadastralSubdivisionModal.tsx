@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Parcel } from '../types';
 import { auditLedger } from '../services/auditLedger';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { X, Scissors, CheckCircle2, ShieldCheck, MapPin, ArrowRight, Layers } from 'lucide-react';
 
 interface CadastralSubdivisionModalProps {
@@ -16,6 +17,7 @@ export const CadastralSubdivisionModal: React.FC<CadastralSubdivisionModalProps>
   onClose
 }) => {
   const { currentRole, currentUser } = useAuth();
+  const { t } = useLanguage();
   const [splitRatio, setSplitRatio] = useState<number>(50); // 50% / 50%
   const [childOwnerA, setChildOwnerA] = useState<string>('');
   const [childOwnerB, setChildOwnerB] = useState<string>('');
@@ -72,14 +74,14 @@ export const CadastralSubdivisionModal: React.FC<CadastralSubdivisionModalProps>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-slate-900">
-                  Interactive Cadastral Boundary Partition & Demarcation Tool
+                  {t('subdivisionTitle')}
                 </h2>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-blue-100 text-[#0B3D6E] font-semibold">
-                  Tahsildar Digital Module
+                  {t('tahsildarModule')}
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Subdivide survey number, calculate geodesic child extents, and assign Bhu-Aadhaar child ULPINs.
+                {t('subdivisionSubtitle')}
               </p>
             </div>
           </div>
@@ -95,23 +97,23 @@ export const CadastralSubdivisionModal: React.FC<CadastralSubdivisionModalProps>
             </div>
             <div>
               <h3 className="text-base font-bold text-emerald-950">
-                Cadastral Partition Order Legally Executed & Hashed!
+                {t('subdivisionSuccessTitle')}
               </h3>
               <p className="text-xs text-emerald-800 mt-1 max-w-md mx-auto">
-                Survey {parcel.surveyNumber} has been officially split into two autonomous cadastral records. Both child parcels have been registered into the National Spatial Data Infrastructure.
+                {t('subdivisionSuccessDesc')}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-left font-mono text-xs max-w-lg mx-auto bg-white p-3.5 rounded-xl border border-emerald-200">
               <div className="p-2.5 bg-slate-50 rounded-lg">
-                <span className="text-slate-400 block text-[10px]">Child Parcel 1</span>
+                <span className="text-slate-400 block text-[10px]">{t('childParcel1')}</span>
                 <span className="font-bold text-[#0B3D6E]">{childSurveyA}</span>
                 <div className="text-[11px] text-slate-700 font-sans mt-1">{areaA} m² ({acresA} acres)</div>
                 <div className="text-[10px] text-slate-500 mt-0.5">ULPIN: {childUlpinA}</div>
               </div>
 
               <div className="p-2.5 bg-slate-50 rounded-lg">
-                <span className="text-slate-400 block text-[10px]">Child Parcel 2</span>
+                <span className="text-slate-400 block text-[10px]">{t('childParcel2')}</span>
                 <span className="font-bold text-[#0B3D6E]">{childSurveyB}</span>
                 <div className="text-[11px] text-slate-700 font-sans mt-1">{areaB} m² ({acresB} acres)</div>
                 <div className="text-[10px] text-slate-500 mt-0.5">ULPIN: {childUlpinB}</div>
@@ -119,14 +121,14 @@ export const CadastralSubdivisionModal: React.FC<CadastralSubdivisionModalProps>
             </div>
 
             <div className="text-[10px] font-mono text-slate-500 bg-white p-2 rounded-lg border border-slate-200 max-w-lg mx-auto truncate">
-              SHA-256 Block Digest: {blockHash}
+              {t('computedDigest')}: {blockHash}
             </div>
 
             <button
               onClick={onClose}
-              className="px-5 py-2 bg-[#0B3D6E] hover:bg-[#082a4d] text-white font-semibold text-xs rounded-lg shadow-sm"
+              className="px-5 py-2 bg-[#0B3D6E] hover:bg-[#082a4d] text-white font-semibold text-xs rounded-lg shadow-sm cursor-pointer"
             >
-              Return to Map & Inspection
+              {t('returnToMap')}
             </button>
           </div>
         ) : (
@@ -134,15 +136,15 @@ export const CadastralSubdivisionModal: React.FC<CadastralSubdivisionModalProps>
             {/* Parent Parcel Baseline Info */}
             <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
               <div>
-                <span className="text-slate-400 block text-[10px]">Parent Survey No.</span>
+                <span className="text-slate-400 block text-[10px]">{t('parentSurveyNo')}</span>
                 <span className="font-bold text-slate-900">{parcel.surveyNumber}</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px]">Parent ULPIN</span>
+                <span className="text-slate-400 block text-[10px]">{t('parentUlpin')}</span>
                 <span className="font-mono font-semibold text-[#0B3D6E]">{parcel.ulpin}</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px]">Total Cadastral Extent</span>
+                <span className="text-slate-400 block text-[10px]">{t('totalCadastralExtent')}</span>
                 <span className="font-bold text-slate-900">{totalArea} m² ({parcel.areaAcres} Acres)</span>
               </div>
             </div>
@@ -150,7 +152,7 @@ export const CadastralSubdivisionModal: React.FC<CadastralSubdivisionModalProps>
             {/* Visual Cadastral Polygon Slicing SVG Graphic */}
             <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col items-center justify-center space-y-2">
               <span className="text-[11px] font-semibold text-slate-600 block">
-                Simulated Geodesic Demarcation Slice:
+                {t('demarcationCutLine')}
               </span>
 
               <div className="relative w-full max-w-md h-36 bg-white rounded-lg border border-slate-300 shadow-inner overflow-hidden flex items-center justify-center p-3">

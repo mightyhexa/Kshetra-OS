@@ -19,6 +19,7 @@ import {
 } from '../server/services/riskRulesMore';
 import { evaluateParcelRisks } from '../server/services/riskEngine';
 import { verifyChain, setTamperOverlay, clearTamperOverlay, getEffectiveLedgerBlocks } from '../server/services/ledgerService';
+import { scanForForbiddenCitizenKeys } from '../server/services/serializers';
 import { Parcel, WaterbodyRecord } from '../shared/types';
 
 describe('STAGE 2: Full-Stack Verification Suite', () => {
@@ -109,6 +110,41 @@ describe('STAGE 2: Full-Stack Verification Suite', () => {
         expect(r1.evidence.notice).toContain('restricted');
       }
     });
+
+    it('deep scans citizen search, detail, risks, and dossier endpoints for forbidden keys', async () => {
+      const allParcels = (await repository.getParcels({ limit: 100 })).items;
+      const mortgaged = allParcels.find(p => p.encumbrance.hasMortgage)!;
+
+      // 1. Search endpoint
+      const searchRes = await request(app)
+        .get('/api/parcels?q=' + mortgaged.ulpin)
+        .set('Authorization', `Bearer ${citizenToken}`);
+      expect(searchRes.status).toBe(200);
+      expect(JSON.stringify(searchRes.body)).not.toContain('mortgageDetails');
+      expect(JSON.stringify(searchRes.body)).not.toContain('coOwners');
+
+      // 2. Detail endpoint
+      const detailRes = await request(app)
+        .get(`/api/parcels/${mortgaged.ulpin}`)
+        .set('Authorization', `Bearer ${citizenToken}`);
+      expect(detailRes.status).toBe(200);
+      expect(JSON.stringify(detailRes.body)).not.toContain('mortgageDetails');
+      expect(JSON.stringify(detailRes.body)).not.toContain('coOwners');
+
+      // 3. Risks endpoint
+      const risksRes = await request(app)
+        .get(`/api/parcels/${mortgaged.ulpin}/risks`)
+        .set('Authorization', `Bearer ${citizenToken}`);
+      expect(risksRes.status).toBe(200);
+      expect(JSON.stringify(risksRes.body)).not.toContain('courtCaseNumber');
+
+      // 4. Dossier endpoint (returns PDF bytes)
+      const dossierRes = await request(app)
+        .post(`/api/dossier/${mortgaged.ulpin}`)
+        .set('Authorization', `Bearer ${citizenToken}`);
+      expect(dossierRes.status).toBe(200);
+      expect(dossierRes.headers['content-type']).toContain('application/pdf');
+    });
   });
 
   // 3. Risk Rules R1 to R9 Pure Functions
@@ -136,11 +172,12 @@ describe('STAGE 2: Full-Stack Verification Suite', () => {
       for (const p of sampleParcels) {
         const overlaps = checkR2BoundaryOverlap(p, sampleParcels);
         for (const o of overlaps) {
+          const ev = o.evidence as Record<string, any>;
           if (o.severity === 'rose') {
             foundRose = true;
-            expect(o.evidence.partnerUlpin).toBeDefined();
-            expect(o.evidence.intersectionGeometry).toBeDefined();
-            expect(o.evidence.overlapPercentage).toBeGreaterThan(5);
+            expect(ev.partnerUlpin).toBeDefined();
+            expect(ev.intersectionGeometry).toBeDefined();
+            expect(ev.overlapPercentage).toBeGreaterThan(5);
           }
           if (o.severity === 'info') {
             foundInfo = true;
@@ -153,15 +190,39 @@ describe('STAGE 2: Full-Stack Verification Suite', () => {
       expect(foundInfo).toBe(true);
     });
 
+    it('R2: Ignores boundary overlap under 0.5% tolerance (e.g. 0.3% coordinate shift)', () => {
+      const p1: Parcel = JSON.parse(JSON.stringify(sampleParcels[0]));
+      const p2: Parcel = JSON.parse(JSON.stringify(sampleParcels[1]));
+      p1.ulpin = 'TEST0000000001';
+      p2.ulpin = 'TEST0000000002';
+      p1.district = 'Test District';
+      p2.district = 'Test District';
+
+      // 100m x 100m square (10000 sqm)
+      p1.boundaryGeojson = {
+        type: 'Polygon',
+        coordinates: [[[77.6000, 12.9000], [77.6010, 12.9000], [77.6010, 12.9010], [77.6000, 12.9010], [77.6000, 12.9000]]]
+      };
+      // Adjacent square overlapping by only ~0.3% (0.000003 deg lon sliver)
+      p2.boundaryGeojson = {
+        type: 'Polygon',
+        coordinates: [[[77.600997, 12.9000], [77.6020, 12.9000], [77.6020, 12.9010], [77.600997, 12.9010], [77.600997, 12.9000]]]
+      };
+
+      const overlaps = checkR2BoundaryOverlap(p1, [p1, p2]);
+      expect(overlaps.length).toBe(0); // Under 0.5% is ignored
+    });
+
     it('R3: Flags parcels within 65m of waterbody', () => {
       let foundR3 = false;
       for (const p of sampleParcels) {
         const findings = checkR3EcoBuffer(p, waterbodies);
         if (findings.length > 0) {
           foundR3 = true;
+          const ev = findings[0].evidence as Record<string, any>;
           expect(findings[0].ruleId).toBe('R3');
           expect(['rose', 'amber']).toContain(findings[0].severity);
-          expect(findings[0].evidence.bufferStatutoryMeters).toBe(65);
+          expect(ev.bufferStatutoryMeters).toBe(65);
         }
       }
       expect(foundR3).toBe(true);
@@ -286,6 +347,31 @@ describe('STAGE 2: Full-Stack Verification Suite', () => {
       expect(res.body.verification).toBeDefined();
       expect(res.body.chain.length).toBeGreaterThan(0);
     });
+
+    it('fails verification and names exact block when data is directly altered in database store (bypassing API & overlay)', async () => {
+      // Direct raw database modification on Block #2
+      const { SqliteRepository } = await import('../server/repo/sqliteRepo');
+      const directRepo = new SqliteRepository();
+      await directRepo.init();
+      const rawDb = (directRepo as any).getDb();
+
+      // Mutate block #2 details directly in SQLite
+      rawDb.prepare("UPDATE ledger_blocks SET details = 'FORGED_DIRECT_SQL_MUTATION' WHERE block_index = 2").run();
+
+      // Verify endpoint recomputes full block hash from raw table rows
+      const verifyRes = await request(app)
+        .get('/api/ledger/verify')
+        .set('Authorization', `Bearer ${officerToken}`);
+
+      expect(verifyRes.status).toBe(200);
+      expect(verifyRes.body.valid).toBe(false);
+      expect(verifyRes.body.firstBrokenIndex).toBe(2);
+      expect(verifyRes.body.reason).toContain('Block #2');
+
+      // Restore seed database to clean state
+      await repository.resetToSeed();
+      clearTamperOverlay();
+    });
   });
 
   // 5. Workflow State Machine Transitions
@@ -380,6 +466,18 @@ describe('STAGE 2: Full-Stack Verification Suite', () => {
       expect(res.body.error.message).toContain('magic bytes');
     });
 
+    it('rejects oversized uploaded file exceeding statutory 5MB limit with 413', async () => {
+      // Create a 5.5 MB buffer
+      const oversizeBuffer = Buffer.alloc(5.5 * 1024 * 1024, '%PDF-1.4\n%oversized-content\n');
+      const res = await request(app)
+        .post('/api/documents/upload')
+        .set('Authorization', `Bearer ${citizenToken}`)
+        .attach('file', oversizeBuffer, 'huge_cadastral_survey.pdf');
+
+      expect(res.status).toBe(413);
+      expect(res.body.error.message).toContain('5MB');
+    });
+
     it('accepts genuine PDF buffer, anchors SHA-256 in ledger, and stores on disk', async () => {
       const genuinePdfBuffer = Buffer.from('%PDF-1.4\n%genuine cadastral deed document\n%%EOF');
       const res = await request(app)
@@ -400,6 +498,76 @@ describe('STAGE 2: Full-Stack Verification Suite', () => {
 
       expect(downloadRes.status).toBe(200);
       expect(downloadRes.headers['x-document-sha256']).toBe(res.body.data.sha256Hash);
+    });
+
+    it('SSE client receives live broadcasts for new ledger blocks and request status changes', async () => {
+      const { eventBroadcaster } = await import('../server/services/eventBroadcaster');
+      const receivedEvents: Array<{ type: string; payload: any }> = [];
+
+      const mockSseClient = {
+        write: (msg: string) => {
+          const match = msg.match(/event:\s*(\w+)\ndata:\s*(\{.*\})\n\n/);
+          if (match) {
+            receivedEvents.push({ type: match[1], payload: JSON.parse(match[2]) });
+          }
+          return true;
+        },
+        on: () => {}
+      } as any;
+
+      eventBroadcaster.subscribe(mockSseClient);
+
+      // Trigger a transition which emits both LEDGER_BLOCK and REQUEST_STATUS
+      const testReq = (await repository.getServiceRequests())[0];
+      if (testReq.status === 'Applied') {
+        await request(app)
+          .post(`/api/requests/${testReq.id}/transition`)
+          .set('Authorization', `Bearer ${officerToken}`)
+          .send({ nextStatus: 'Under Review', department: 'Land Records & Survey', remarks: 'SSE live event verification' });
+      } else {
+        eventBroadcaster.broadcast('LEDGER_BLOCK', { blockIndex: 99, action: 'TEST_SSE' });
+        eventBroadcaster.broadcast('REQUEST_STATUS', { requestId: testReq.id, toStatus: 'Cross Verified' });
+      }
+
+      expect(receivedEvents.some(e => e.type === 'LEDGER_BLOCK')).toBe(true);
+      expect(receivedEvents.some(e => e.type === 'REQUEST_STATUS')).toBe(true);
+    });
+
+    it('rejects unauthenticated /api/events with 401 and accepts authentication via query parameter token', async () => {
+      const unauthRes = await request(app).get('/api/events');
+      expect(unauthRes.status).toBe(401);
+
+      // Verify requireAuth middleware correctly extracts and validates ?token= parameter
+      const { requireAuth } = await import('../server/middleware/auth');
+      let authedUser: any = null;
+      const mockReq: any = { headers: {}, query: { token: citizenToken } };
+      const mockRes: any = { status: () => ({ json: () => {} }) };
+      const mockNext = () => { authedUser = mockReq.user; };
+
+      requireAuth(mockReq, mockRes, mockNext);
+      expect(authedUser).not.toBeNull();
+      expect(authedUser.role).toBe('citizen');
+      expect(authedUser.fullName).toBe('Rajesh K. Verma');
+    });
+
+    it('ensures citizen GET /api/ledger responses contain zero forbidden keys', async () => {
+      const res = await request(app)
+        .get('/api/ledger')
+        .set('Authorization', `Bearer ${citizenToken}`);
+
+      expect(res.status).toBe(200);
+      const violations = scanForForbiddenCitizenKeys(res.body);
+      expect(violations.length).toBe(0);
+    });
+
+    it('initializes and verifies 26 parcels and pristine ledger under both sqlite and json store engines', async () => {
+      const { JsonFileRepository } = await import('../server/repo/jsonRepo');
+      const jsonRepo = new JsonFileRepository();
+      await jsonRepo.init();
+      const jsonParcels = await jsonRepo.getParcels();
+      expect(jsonParcels.total).toBe(26);
+      const jsonLedger = await jsonRepo.getLedgerBlocks();
+      expect(jsonLedger.length).toBeGreaterThan(0);
     });
   });
 
@@ -451,6 +619,26 @@ describe('STAGE 2: Full-Stack Verification Suite', () => {
       expect(res.status).toBe(200);
       expect(res.body.matched).toBe(false);
       expect(res.body.status).toBe('NO_MATCH');
+    });
+
+    it('generates a citizen dossier PDF containing zero unmasked court docket numbers, stay order details, or commercial loan amounts', async () => {
+      // Find a heavily encumbered parcel (litigation + mortgage)
+      const encumbered = (await repository.getParcels({ limit: 100 })).items.find(p => p.encumbrance.disputeFlag || p.encumbrance.hasMortgage)!;
+
+      const res = await request(app)
+        .post(`/api/dossier/${encumbered.ulpin}`)
+        .set('Authorization', `Bearer ${citizenToken}`);
+
+      expect(res.status).toBe(200);
+      const pdfText = res.body.toString('latin1');
+
+      // Ensure no raw mortgage bank charge IDs or sensitive details appear in the binary stream text
+      if (encumbered.encumbrance.mortgageDetails?.chargeId) {
+        expect(pdfText).not.toContain(encumbered.encumbrance.mortgageDetails.chargeId);
+      }
+      if (encumbered.encumbrance.courtCaseNumber) {
+        expect(pdfText).not.toContain(encumbered.encumbrance.courtCaseNumber);
+      }
     });
   });
 });

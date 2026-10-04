@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../services/apiClient';
 import { Parcel } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 import { X, Terminal, CheckCircle2, Lock, ArrowRight, ShieldCheck, Copy, Check } from 'lucide-react';
 
 interface ApiInspectorModalProps {
@@ -14,6 +15,7 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
   onClose,
   initialUlpin
 }) => {
+  const { t } = useLanguage();
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [targetUlpin, setTargetUlpin] = useState(initialUlpin || '');
   const [citizenResponse, setCitizenResponse] = useState<any>(null);
@@ -82,10 +84,10 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900">
-                Layer 2 Definition of Done — API Role-Gated Response Inspector
+                {t('apiInspectorTitle')}
               </h2>
               <p className="text-xs text-slate-500">
-                Verifies server-level field stripping for sensitive mortgage and court docket data.
+                {t('apiInspectorSubtitle')}
               </p>
             </div>
           </div>
@@ -97,7 +99,7 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
         {/* Query Selector Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
           <div className="flex items-center gap-2 flex-1">
-            <span className="font-semibold text-slate-700">Target Parcel:</span>
+            <span className="font-semibold text-slate-700">{t('targetParcel')}</span>
             <select
               value={targetUlpin}
               onChange={(e) => {
@@ -128,7 +130,7 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
             <div className="p-3 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                <span className="font-bold text-xs text-slate-800">Role: CITIZEN</span>
+                <span className="font-bold text-xs text-slate-800">{t('roleCitizen')}</span>
                 <span className="text-[10px] text-slate-500 font-mono">GET /api/parcels/:ulpin (Citizen JWT)</span>
               </div>
               <button
@@ -136,17 +138,17 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
                 className="text-[11px] text-[#0B3D6E] hover:underline flex items-center gap-1 font-medium"
               >
                 {copiedRole === 'citizen' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                <span>{copiedRole === 'citizen' ? 'Copied' : 'Copy JSON'}</span>
+                <span>{copiedRole === 'citizen' ? t('copied') : t('copyJson')}</span>
               </button>
             </div>
 
             <div className="p-2.5 bg-blue-50 border-b border-blue-100 text-[11px] text-[#0B3D6E]">
-              <strong>Security Policy Applied:</strong> <code className="font-mono">encumbrance.mortgageDetails</code>, stay orders, and court docket numbers are physically stripped by the server before transmission.
+              <strong>{t('securityPolicyApplied')}</strong> <code className="font-mono">encumbrance.mortgageDetails</code>, stay orders, and court docket numbers are physically stripped by the server before transmission.
             </div>
 
             <div className="flex-1 p-3 overflow-y-auto font-mono text-[11px] bg-white text-slate-800">
               {isLoading ? (
-                <div className="text-slate-400">Querying backend...</div>
+                <div className="text-slate-400">{t('queryingBackend')}</div>
               ) : (
                 <pre>{JSON.stringify((citizenResponse?.data?.data || citizenResponse?.data)?.encumbrance, null, 2)}</pre>
               )}
@@ -158,7 +160,7 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
             <div className="p-3 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span className="font-bold text-xs text-slate-800">Role: LAND OFFICER</span>
+                <span className="font-bold text-xs text-slate-800">{t('roleOfficer')}</span>
                 <span className="text-[10px] text-slate-500 font-mono">GET /api/parcels/:ulpin (Officer JWT)</span>
               </div>
               <button
@@ -166,17 +168,17 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
                 className="text-[11px] text-[#0B3D6E] hover:underline flex items-center gap-1 font-medium"
               >
                 {copiedRole === 'officer' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                <span>{copiedRole === 'officer' ? 'Copied' : 'Copy JSON'}</span>
+                <span>{copiedRole === 'officer' ? t('copied') : t('copyJson')}</span>
               </button>
             </div>
 
             <div className="p-2.5 bg-emerald-50 border-b border-emerald-100 text-[11px] text-emerald-900">
-              <strong>Privileged Clearance:</strong> Full banking mortgage charge (Bank name, loan amount, charge ID, court docket) returned.
+              <strong>{t('privilegedClearance')}</strong> Full banking mortgage charge (Bank name, loan amount, charge ID, court docket) returned.
             </div>
 
             <div className="flex-1 p-3 overflow-y-auto font-mono text-[11px] bg-white text-slate-800">
               {isLoading ? (
-                <div className="text-slate-400">Querying backend...</div>
+                <div className="text-slate-400">{t('queryingBackend')}</div>
               ) : (
                 <pre>{JSON.stringify((officerResponse?.data?.data || officerResponse?.data)?.encumbrance, null, 2)}</pre>
               )}
@@ -196,7 +198,7 @@ export const ApiInspectorModal: React.FC<ApiInspectorModalProps> = ({
             onClick={onClose}
             className="px-4 py-1.5 bg-[#0B3D6E] text-white font-semibold rounded-lg text-xs hover:bg-[#082a4d]"
           >
-            Done
+            {t('closeBtn')}
           </button>
         </div>
       </div>

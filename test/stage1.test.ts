@@ -1,118 +1,184 @@
+import { describe, it, expect } from 'vitest';
 import { generateUlpin, formatUlpin, cleanUlpin, isValidUlpin } from '../shared/ulpin';
 import { serializeParcel, scanForForbiddenCitizenKeys } from '../server/services/serializers';
 import { buildSeedDatabase } from '../server/repo/seed';
 import { evaluateParcelRisks } from '../server/services/riskEngine';
 import { verifyChain } from '../server/services/ledgerService';
+import { validateTransition, WorkflowTransitionError } from '../server/services/workflowEngine';
 
-async function runTests() {
-  console.log('--- Running STAGE 1 Unit Tests ---');
-  let failures = 0;
+describe('STAGE 1: Core Cadastral, Privacy & Integrity Suite', () => {
+  // 1. ULPIN derivation & format
+  describe('1. Bhu-Aadhaar ULPIN Derivation & Standard Formatting', () => {
+    it('generates a valid 14-character alphanumeric ULPIN starting with state code', () => {
+      const ulpin = generateUlpin('KA', 12.9818, 77.6205, '142/2A');
+      expect(ulpin.length).toBe(14);
+      expect(ulpin.startsWith('KA')).toBe(true);
+      expect(isValidUlpin(ulpin)).toBe(true);
+    });
 
-  function assert(condition: boolean, msg: string) {
-    if (!condition) {
-      console.error(`❌ FAIL: ${msg}`);
-      failures++;
-    } else {
-      console.log(`✅ PASS: ${msg}`);
-    }
-  }
+    it('formats and cleans ULPIN grouped as XX-XXXX-XXXX-XXXX', () => {
+      const ulpin = 'KA25AGUFCU4RZ9';
+      const formatted = formatUlpin(ulpin);
+      expect(formatted).toMatch(/^[A-Z]{2}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+      expect(cleanUlpin(formatted)).toBe(ulpin);
+    });
+  });
 
-  // 1. Test ULPIN derivation and format
-  const ulpin = generateUlpin('KA', 12.9818, 77.6205, '142/2A');
-  assert(ulpin.length === 14, `ULPIN length is 14 characters (got ${ulpin.length}: ${ulpin})`);
-  assert(ulpin.startsWith('KA'), `ULPIN starts with 2-letter state code KA`);
-  assert(isValidUlpin(ulpin), `ULPIN matches standard 14-char regex`);
-  const formatted = formatUlpin(ulpin);
-  assert(/^[A-Z]{2}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(formatted), `ULPIN formats as XX-XXXX-XXXX-XXXX (${formatted})`);
-  assert(cleanUlpin(formatted) === ulpin, `cleanUlpin strips hyphens back to original`);
+  // 2. Seed Database Verification
+  describe('2. Canonical Metro Dataset (26 Parcels across 5 Metros)', () => {
+    const db = buildSeedDatabase();
 
-  // 2. Test Seed Database
-  const db = buildSeedDatabase();
-  assert(db.parcels.length === 26, `Exactly 26 parcels generated across 5 metros (got ${db.parcels.length})`);
-  
-  const metroCounts: Record<string, number> = {};
-  db.parcels.forEach(p => { metroCounts[p.district] = (metroCounts[p.district] || 0) + 1; });
-  assert(metroCounts['Bengaluru Urban'] === 6, 'Bengaluru has 6 parcels');
-  assert(metroCounts['Hyderabad'] === 5, 'Hyderabad has 5 parcels');
-  assert(metroCounts['Pune'] === 5, 'Pune has 5 parcels');
-  assert(metroCounts['Lucknow'] === 5, 'Lucknow has 5 parcels');
-  assert(metroCounts['Ahmedabad'] === 5, 'Ahmedabad has 5 parcels');
+    it('contains exactly 26 parcels with specified metro distribution', () => {
+      expect(db.parcels.length).toBe(26);
+      const metroCounts: Record<string, number> = {};
+      db.parcels.forEach(p => { metroCounts[p.district] = (metroCounts[p.district] || 0) + 1; });
 
-  // Verify all 26 parcels have valid 14-char ULPINs
-  const allUlpinsValid = db.parcels.every(p => isValidUlpin(p.ulpin));
-  assert(allUlpinsValid, 'All 26 parcels have valid 14-character Bhu-Aadhaar ULPINs');
+      expect(metroCounts['Bengaluru Urban']).toBe(6);
+      expect(metroCounts['Hyderabad']).toBe(5);
+      expect(metroCounts['Pune']).toBe(5);
+      expect(metroCounts['Lucknow']).toBe(5);
+      expect(metroCounts['Ahmedabad']).toBe(5);
+    });
 
-  // 3. Test Role Masking & Deep Scan for Forbidden Keys
-  const mortgagedParcel = db.parcels.find(p => p.encumbrance.hasMortgage)!;
-  const disputedParcel = db.parcels.find(p => p.encumbrance.disputeFlag)!;
-  
-  const citizenSerialized = serializeParcel(mortgagedParcel, 'citizen');
-  const violations = scanForForbiddenCitizenKeys(citizenSerialized);
-  assert(violations.length === 0, `Citizen serialized parcel has zero forbidden keys (violations: ${violations.join(', ')})`);
-  assert((citizenSerialized as any).encumbrance.mortgageDetails === undefined, 'mortgageDetails is physically absent for citizen');
-  assert((citizenSerialized as any).ownership.coOwners === undefined, 'coOwners is physically absent for citizen');
+    it('ensures all 26 parcels have valid 14-char ULPINs and closed polygon coordinates', () => {
+      for (const p of db.parcels) {
+        expect(isValidUlpin(p.ulpin)).toBe(true);
+        expect(p.boundaryGeojson.type).toBe('Polygon');
+        expect(p.boundaryGeojson.coordinates.length).toBeGreaterThan(0);
+        const ring = p.boundaryGeojson.coordinates[0];
+        // Closed ring check
+        expect(ring[0][0]).toBeCloseTo(ring[ring.length - 1][0], 4);
+        expect(ring[0][1]).toBeCloseTo(ring[ring.length - 1][1], 4);
+      }
+    });
+  });
 
-  const citizenDisputed = serializeParcel(disputedParcel, 'citizen');
-  assert((citizenDisputed as any).encumbrance.courtCaseNumber === undefined, 'courtCaseNumber is physically absent for citizen');
-  assert((citizenDisputed as any).encumbrance.stayOrderDetails === undefined, 'stayOrderDetails is physically absent for citizen');
+  // 3. Citizen Role Masking & Deep Key Scans
+  describe('3. Citizen Data Privacy & Strict Server-Side Key Stripping', () => {
+    const db = buildSeedDatabase();
+    const mortgagedParcel = db.parcels.find(p => p.encumbrance.hasMortgage)!;
+    const disputedParcel = db.parcels.find(p => p.encumbrance.disputeFlag)!;
 
-  const officerSerialized = serializeParcel(mortgagedParcel, 'officer');
-  assert((officerSerialized as any).encumbrance.mortgageDetails !== undefined, 'mortgageDetails is present for officer');
+    it('physically strips all forbidden keys for citizens (zero violations)', () => {
+      const citizenSerialized = serializeParcel(mortgagedParcel, 'citizen');
+      const violations = scanForForbiddenCitizenKeys(citizenSerialized);
+      expect(violations).toHaveLength(0);
+      expect((citizenSerialized as any).encumbrance.mortgageDetails).toBeUndefined();
+      expect((citizenSerialized as any).ownership.coOwners).toBeUndefined();
+    });
 
-  // 4. Test Scenarios evaluated by Risk Engine
-  const allFlags = db.parcels.flatMap(p => evaluateParcelRisks(p, db.parcels, db.waterbodies));
-  
-  const severeOverlap = allFlags.find(f => f.code === 'CADASTRAL_OVERLAP_SEVERE');
-  assert(!!severeOverlap, 'Found severe cadastral boundary overlap (> 5%)');
+    it('strips judicial court docket and stay order details for citizens', () => {
+      const citizenDisputed = serializeParcel(disputedParcel, 'citizen');
+      expect((citizenDisputed as any).encumbrance.courtCaseNumber).toBeUndefined();
+      expect((citizenDisputed as any).encumbrance.stayOrderDetails).toBeUndefined();
+    });
 
-  const toleranceOverlap = allFlags.find(f => f.code === 'CADASTRAL_OVERLAP_TOLERANCE');
-  assert(!!toleranceOverlap, 'Found boundary sliver within survey tolerance (0.1% - 1%)');
+    it('retains complete details for land officer role', () => {
+      const officerSerialized = serializeParcel(mortgagedParcel, 'officer');
+      expect((officerSerialized as any).encumbrance.mortgageDetails).toBeDefined();
+    });
+  });
 
-  const waterbodyFlags = allFlags.filter(f => f.code === 'WATERBODY_NGT_BUFFER_VIOLATION');
-  assert(waterbodyFlags.length === 3, `Found exactly 3 parcels within 65m waterbody buffer (got ${waterbodyFlags.length})`);
+  // 4. Automated Risk Rules (R1 to R9) with ruleId
+  describe('4. Risk Rules Detection on Seeded Scenarios', () => {
+    const db = buildSeedDatabase();
+    const allFindings = db.parcels.flatMap(p => evaluateParcelRisks(p, db.parcels, db.waterbodies));
 
-  const stayOrderFlags = allFlags.filter(f => f.code === 'ACTIVE_STAY_ORDER_LITIGATION');
-  assert(stayOrderFlags.length === 4, `Found exactly 4 parcels with active litigation and stay orders (got ${stayOrderFlags.length})`);
+    it('R1: Finds active litigation / stay orders', () => {
+      const stayFindings = allFindings.filter(f => f.ruleId === 'R1');
+      expect(stayFindings.length).toBe(4);
+      expect(stayFindings[0].severity).toBe('rose');
+    });
 
-  const duplicateConveyance = allFlags.find(f => f.code === 'DUPLICATE_CONVEYANCE_90D');
-  assert(!!duplicateConveyance, 'Found duplicate conveyance within 90 days');
+    it('R2: Finds boundary overlap flag (>5%) and tolerance info (0.3% - 5%)', () => {
+      const overlapSevere = allFindings.find(f => f.ruleId === 'R2' && f.severity === 'rose');
+      expect(overlapSevere).toBeDefined();
+      const overlapTolerance = allFindings.find(f => f.ruleId === 'R2' && f.severity === 'info');
+      expect(overlapTolerance).toBeDefined();
+    });
 
-  const cersaiLien = allFlags.find(f => f.code === 'CERSAI_UNDISCLOSED_MORTGAGE');
-  assert(!!cersaiLien, 'Found CERSAI undisclosed mortgage discrepancy');
+    it('R3: Finds exactly 3 parcels in waterbody buffer zone', () => {
+      const waterbodyFindings = allFindings.filter(f => f.ruleId === 'R3');
+      expect(waterbodyFindings.length).toBe(3);
+    });
 
-  const zoningMismatches = allFlags.filter(f => f.code === 'ZONING_MISMATCH');
-  assert(zoningMismatches.length === 2, `Found exactly 2 zoning/land-use mismatches (got ${zoningMismatches.length})`);
+    it('R4: Finds 2 zoning / land-use mismatches', () => {
+      const zoningFindings = allFindings.filter(f => f.ruleId === 'R4');
+      expect(zoningFindings.length).toBe(2);
+    });
 
-  const staleTax = allFlags.find(f => f.code === 'STALE_TAX_DEFAULT');
-  assert(!!staleTax, 'Found stale municipal property tax assessment');
+    it('R6: Finds duplicate conveyance within 90 days', () => {
+      const dupSale = allFindings.find(f => f.ruleId === 'R6');
+      expect(dupSale).toBeDefined();
+      expect(dupSale?.severity).toBe('rose');
+    });
 
-  // 5. Test Ledger Chain Verification and Tamper Detection
-  const verifyValid = verifyChain(db.ledger);
-  assert(verifyValid.isValid === true, 'Pristine seed ledger passes cryptographic verification');
+    it('R7: Finds CERSAI cross-registry lien discrepancy', () => {
+      const lien = allFindings.find(f => f.ruleId === 'R7');
+      expect(lien).toBeDefined();
+      expect(lien?.severity).toBe('amber');
+    });
 
-  // Tamper with block 1 in memory
-  const tamperedLedger = JSON.parse(JSON.stringify(db.ledger));
-  tamperedLedger[1].details = 'MALICIOUS_MODIFICATION_OF_REVENUE_ENTRY';
-  const verifyTampered = verifyChain(tamperedLedger);
-  assert(verifyTampered.isValid === false, 'Tampered ledger fails cryptographic verification');
-  assert(verifyTampered.brokenBlockIndex === 1, 'Verification correctly pinpoints broken Block #1');
+    it('R8: Finds stale tax assessment arrears', () => {
+      const taxFinding = allFindings.find(f => f.ruleId === 'R8');
+      expect(taxFinding).toBeDefined();
+    });
+  });
 
-  // 6. Test SQLite Persistence Repository
-  const sqliteRepo = new (await import('../server/repo/sqliteRepo')).SqliteRepository();
-  await sqliteRepo.init();
-  const sqliteParcels = await sqliteRepo.getParcels();
-  assert(sqliteParcels.total === 26, `SQLite store persisted and retrieved 26 parcels (got ${sqliteParcels.total})`);
-  const bngParcel = await sqliteRepo.getParcelByUlpin(sqliteParcels.items[0].ulpin);
-  assert(bngParcel !== null, 'SQLite parcel fetch by ULPIN succeeded');
-  assert(bngParcel?.ownership.ownerName !== undefined, 'SQLite joined ownership successfully');
-  assert(bngParcel?.zoning.masterPlanClassification !== undefined, 'SQLite joined zoning successfully');
+  // 5. Ledger Integrity & Tamper Proofing
+  describe('5. Cryptographic Ledger Hash Verification', () => {
+    const db = buildSeedDatabase();
 
-  if (failures > 0) {
-    console.error(`\nTest suite finished with ${failures} failure(s).`);
-    process.exit(1);
-  } else {
-    console.log('\nAll STAGE 1 unit tests passed successfully!\n');
-  }
-}
+    it('verifies pristine seed ledger chain successfully', () => {
+      const result = verifyChain(db.ledger);
+      expect(result.isValid).toBe(true);
+      expect(result.checked).toBeGreaterThan(0);
+    });
 
-runTests();
+    it('detects tampering and isolates the exact corrupted block index', () => {
+      const tampered = JSON.parse(JSON.stringify(db.ledger));
+      tampered[1].details = 'TAMPERED_RECORD';
+      const result = verifyChain(tampered);
+      expect(result.isValid).toBe(false);
+      expect(result.brokenBlockIndex).toBe(1);
+    });
+  });
+
+  // 6. Workflow Transition State Machine Rules
+  describe('6. Workflow Transition Validation', () => {
+    it('permits legal transition from Applied to Under Review for officer', () => {
+      expect(() => {
+        validateTransition('Applied', 'Under Review', 'officer');
+      }).not.toThrow();
+    });
+
+    it('rejects invalid state jump (Applied -> Approved) with 409 WorkflowTransitionError', () => {
+      expect(() => {
+        validateTransition('Applied', 'Approved', 'officer');
+      }).toThrow(WorkflowTransitionError);
+    });
+
+    it('rejects state transition by unauthorized citizen role', () => {
+      expect(() => {
+        validateTransition('Applied', 'Under Review', 'citizen');
+      }).toThrow(WorkflowTransitionError);
+    });
+  });
+
+  // 7. SQLite Repository Persistence
+  describe('7. SQLite Repository Persistence', () => {
+    it('persists and retrieves all 26 parcels with relational joins', async () => {
+      const { SqliteRepository } = await import('../server/repo/sqliteRepo');
+      const repo = new SqliteRepository();
+      await repo.init();
+
+      const result = await repo.getParcels();
+      expect(result.total).toBe(26);
+
+      const sample = await repo.getParcelByUlpin(result.items[0].ulpin);
+      expect(sample).not.toBeNull();
+      expect(sample?.ownership.ownerName).toBeDefined();
+      expect(sample?.zoning.masterPlanClassification).toBeDefined();
+    });
+  });
+});

@@ -12,7 +12,6 @@ export function checkR1Litigation(parcel: Parcel): RiskRuleFinding | null {
   const isStay = !!parcel.encumbrance.stayOrderActive;
   return {
     ruleId: 'R1',
-    code: 'ACTIVE_STAY_ORDER_LITIGATION',
     severity: 'rose',
     plainReason: isStay
       ? 'An active civil court stay order prohibits any transfer, alienation, or mutation of this parcel.'
@@ -48,7 +47,6 @@ export function checkR2BoundaryOverlap(parcel: Parcel, allParcels: Parcel[]): Ri
     if (overlapPct > config.OVERLAP_FLAG_PCT) {
       findings.push({
         ruleId: 'R2',
-        code: 'CADASTRAL_OVERLAP_SEVERE',
         severity: 'rose',
         plainReason: `Spatial cadastre intersects ${overlapPct}% into adjacent Survey ${other.surveyNumber} (${other.displayUlpin || other.ulpin}), exceeding the statutory boundary tolerance.`,
         params: {
@@ -69,7 +67,6 @@ export function checkR2BoundaryOverlap(parcel: Parcel, allParcels: Parcel[]): Ri
     } else if (overlapPct >= config.OVERLAP_TOLERANCE_PCT && overlapPct <= config.OVERLAP_FLAG_PCT) {
       findings.push({
         ruleId: 'R2',
-        code: 'CADASTRAL_OVERLAP_TOLERANCE',
         severity: 'info',
         plainReason: `Boundary coordinate sliver of ${overlapPct}% with Survey ${other.surveyNumber} is within legacy DILRMP survey tolerance.`,
         params: {
@@ -111,7 +108,6 @@ export function checkR3EcoBuffer(parcel: Parcel, waterbodies: WaterbodyRecord[])
 
     findings.push({
       ruleId: 'R3',
-      code: 'WATERBODY_NGT_BUFFER_VIOLATION',
       severity: hasBuildingPermission ? 'rose' : 'amber',
       plainReason: hasBuildingPermission
         ? `Building permission was granted within the mandatory ${config.WATERBODY_BUFFER_METERS}m statutory environmental buffer of ${wb.name}, creating severe legal risk under NGT mandates.`
@@ -148,7 +144,6 @@ export function checkR4ZoningMismatch(parcel: Parcel): RiskRuleFinding | null {
 
   return {
     ruleId: 'R4',
-    code: 'ZONING_MISMATCH',
     severity: 'amber',
     plainReason: `Master-plan classification (${parcel.zoning.masterPlanClassification}) differs from registered revenue land use (${parcel.zoning.registeredLandUse}), requiring Change of Land Use (CLU) authorization.`,
     params: {

@@ -60,7 +60,7 @@ export class SqliteRepository implements IRepository {
         allParcels = allParcels.filter(p => p.encumbrance.disputeFlag === filter.disputed);
       }
       if (filter.flagged) {
-        allParcels = allParcels.filter(p => evaluateParcelRisks(p, allParcels, waterbodies).length > 0);
+        allParcels = allParcels.filter(p => evaluateParcelRisks(p, allParcels, waterbodies).some(f => f.severity === 'amber' || f.severity === 'rose'));
       }
       if (filter.q) {
         const q = filter.q.toLowerCase().trim();

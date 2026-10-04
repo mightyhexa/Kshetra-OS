@@ -22,7 +22,11 @@ eventsRouter.get('/', requireAuth, (req: Request, res: Response) => {
   res.write(`event: CONNECTED\ndata: ${JSON.stringify(initPayload)}\n\n`);
 
   // Subscribe to system broadcasts
-  eventBroadcaster.subscribe(res);
+  eventBroadcaster.subscribe(res, {
+    id: req.user!.id,
+    role: req.user!.role,
+    fullName: req.user!.fullName
+  });
 
   // Keep-alive heartbeat every 25 seconds
   const heartbeat = setInterval(() => {

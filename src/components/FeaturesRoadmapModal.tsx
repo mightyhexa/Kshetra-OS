@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import { 
   X, 
   Sparkles, 
@@ -24,6 +25,7 @@ export const FeaturesRoadmapModal: React.FC<FeaturesRoadmapModalProps> = ({
   isOpen,
   onClose
 }) => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'working' | 'roadmap' | 'architecture'>('working');
 
   if (!isOpen) return null;
@@ -40,14 +42,14 @@ export const FeaturesRoadmapModal: React.FC<FeaturesRoadmapModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-slate-900">
-                  KSHETRA OS — High-Grade Prototype Capability Matrix
+                  {t('roadmapTitle')}
                 </h2>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200">
-                  SIH26014 Winning Tier
+                  {t('winningTierBadge')}
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Audit of working production-grade features and high-value innovations for SIH evaluation.
+                {t('roadmapSubtitle')}
               </p>
             </div>
           </div>
@@ -65,7 +67,7 @@ export const FeaturesRoadmapModal: React.FC<FeaturesRoadmapModalProps> = ({
             }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>1. Working Features (Built & Live)</span>
+            <span>{t('roadmapTabWorking')}</span>
           </button>
           <button
             onClick={() => setActiveTab('roadmap')}
@@ -74,7 +76,7 @@ export const FeaturesRoadmapModal: React.FC<FeaturesRoadmapModalProps> = ({
             }`}
           >
             <Cpu className="w-3.5 h-3.5" />
-            <span>2. High-Grade Features to Add (Judge Impressors)</span>
+            <span>{t('roadmapTabRoadmap')}</span>
           </button>
           <button
             onClick={() => setActiveTab('architecture')}
@@ -83,7 +85,7 @@ export const FeaturesRoadmapModal: React.FC<FeaturesRoadmapModalProps> = ({
             }`}
           >
             <Code2 className="w-3.5 h-3.5" />
-            <span>3. Interoperability & Tech Stack</span>
+            <span>{t('roadmapTabArch')}</span>
           </button>
         </div>
 
@@ -92,7 +94,7 @@ export const FeaturesRoadmapModal: React.FC<FeaturesRoadmapModalProps> = ({
           {activeTab === 'working' && (
             <div className="space-y-3">
               <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs">
-                <strong>100% Operational in this build:</strong> All 7 layers of the Master Prompt Protocol (Layers 0 to 6) are implemented with structured mock datasets, zero hardcoded static text, and verified cryptographic rules.
+                <strong>{t('operationalInBuild')}</strong> {t('operationalInBuildDesc')}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -319,7 +321,7 @@ export const FeaturesRoadmapModal: React.FC<FeaturesRoadmapModalProps> = ({
             onClick={onClose}
             className="px-4 py-1.5 bg-[#0B3D6E] hover:bg-[#082a4d] text-white font-semibold rounded-lg text-xs"
           >
-            Close Matrix
+            {t('closeMatrix')}
           </button>
         </div>
       </div>

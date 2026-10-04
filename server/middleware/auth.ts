@@ -10,6 +10,7 @@ export interface AuthenticatedUser {
   designation?: string;
   jurisdictionDistrict?: string;
   jurisdictionState?: string;
+  aadhaarMasked?: string;
 }
 
 declare global {
@@ -28,7 +29,8 @@ export function signToken(user: AuthenticatedUser): string {
       role: user.role,
       designation: user.designation,
       jurisdictionDistrict: user.jurisdictionDistrict,
-      jurisdictionState: user.jurisdictionState
+      jurisdictionState: user.jurisdictionState,
+      aadhaarMasked: user.aadhaarMasked
     },
     config.jwtSecret,
     { expiresIn: '2h' }
@@ -37,18 +39,27 @@ export function signToken(user: AuthenticatedUser): string {
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  let token: string | undefined;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query.token && typeof req.query.token === 'string') {
+    token = req.query.token;
+  } else if (req.query.access_token && typeof req.query.access_token === 'string') {
+    token = req.query.access_token;
+  }
+
+  if (!token) {
     res.status(401).json({
       success: false,
       error: {
         code: 'UNAUTHORIZED',
-        message: 'Authentication required. Valid Bearer JWT token must be provided.'
+        message: 'Authentication required. Valid Bearer JWT token or query parameter token must be provided.'
       }
     });
     return;
   }
 
-  const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, config.jwtSecret) as AuthenticatedUser;
     req.user = decoded;
@@ -62,4 +73,27 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
       }
     });
   }
+}
+
+export function requireRole(allowedRoles: UserRole[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' }
+      });
+      return;
+    }
+    if (!allowedRoles.includes(req.user.role)) {
+      res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: `Access denied. Role '${req.user.role}' is not authorized to access this resource.`
+        }
+      });
+      return;
+    }
+    next();
+  };
 }

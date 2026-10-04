@@ -16,15 +16,17 @@ class ApiClient {
   private tokenStorageKey = 'kshetra_jwt_token';
 
   constructor() {
-    this.token = localStorage.getItem(this.tokenStorageKey);
+    this.token = typeof localStorage !== 'undefined' ? localStorage.getItem(this.tokenStorageKey) : null;
   }
 
   public setToken(token: string | null) {
     this.token = token;
-    if (token) {
-      localStorage.setItem(this.tokenStorageKey, token);
-    } else {
-      localStorage.removeItem(this.tokenStorageKey);
+    if (typeof localStorage !== 'undefined') {
+      if (token) {
+        localStorage.setItem(this.tokenStorageKey, token);
+      } else {
+        localStorage.removeItem(this.tokenStorageKey);
+      }
     }
   }
 
@@ -195,8 +197,9 @@ class ApiClient {
   }
 
   // Ledger
-  public async getLedger(): Promise<AuditLedgerEntry[]> {
-    const res = await this.request<{ data: AuditLedgerEntry[] }>('/api/ledger');
+  public async getLedger(filter?: string): Promise<AuditLedgerEntry[]> {
+    const url = filter ? `/api/ledger?filter=${encodeURIComponent(filter)}` : '/api/ledger';
+    const res = await this.request<{ data: AuditLedgerEntry[] }>(url);
     return res.data;
   }
 
@@ -270,6 +273,17 @@ class ApiClient {
     });
     if (!res.ok) throw new Error(`Failed to export ledger (${res.status})`);
     return res.blob();
+  }
+
+  // Admin Analytics & Diagnostic Self-Test
+  public async getAdminStats(): Promise<any> {
+    const res = await this.request<{ data: any }>('/api/admin/stats');
+    return res.data;
+  }
+
+  public async runSelfTest(): Promise<any> {
+    const res = await this.request<{ data: any }>('/api/selftest/selftest');
+    return res.data;
   }
 }
 

@@ -206,9 +206,9 @@ export const BENGALURU_PARCELS: Parcel[] = [
     subDistrict: 'Bengaluru South',
     villageWard: 'Koramangala 4th Block',
     pinCode: '560034',
-    // Slightly overlaps parcel 3 edge: 77.619796 instead of 77.6198 (sliver overlap ~0.33%)
+    // Slightly overlaps parcel 3 edge: 77.619785 instead of 77.6198 (sliver overlap ~1.2%)
     polygon: [
-      [77.619796, 12.9340], [77.6210, 12.9340], [77.6210, 12.9350], [77.619796, 12.9350], [77.619796, 12.9340]
+      [77.619785, 12.9340], [77.6210, 12.9340], [77.6210, 12.9350], [77.619785, 12.9350], [77.619785, 12.9340]
     ],
     ownerName: 'Manjula Krishnamurthy',
     ownerGender: 'Female',

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireRole } from '../middleware/auth';
 import { repository } from '../repo';
 import { ServiceRequest, WorkflowTransition } from '../../shared/types';
 import { 
@@ -20,7 +20,7 @@ requestsRouter.get('/', requireAuth, async (req: Request, res: Response) => {
   
   // Augment with SLA turnaround metrics
   const augmented = requests.map(r => {
-    const isCompleted = r.status === 'APPROVED' || r.status === 'REJECTED' || r.status === 'Approved' || r.status === 'Rejected';
+    const isCompleted = r.status === 'Approved' || r.status === 'Rejected' || r.status === 'APPROVED' || r.status === 'REJECTED';
     const sla = calculateTurnaround(r.submittedAt, isCompleted ? r.lastUpdatedAt : undefined);
     return {
       ...r,
@@ -48,7 +48,7 @@ requestsRouter.get('/:id', requireAuth, async (req: Request, res: Response) => {
     return;
   }
 
-  const isCompleted = request.status === 'APPROVED' || request.status === 'REJECTED' || request.status === 'Approved' || request.status === 'Rejected';
+  const isCompleted = request.status === 'Approved' || request.status === 'Rejected' || request.status === 'APPROVED' || request.status === 'REJECTED';
   const turnaround = calculateTurnaround(request.submittedAt, isCompleted ? request.lastUpdatedAt : undefined);
 
   res.json({
@@ -154,7 +154,7 @@ requestsRouter.post('/', requireAuth, uploadMiddleware.single('file'), async (re
 });
 
 // POST /api/requests/:id/transition (officer / admin state machine)
-requestsRouter.post('/:id/transition', requireAuth, async (req: Request, res: Response) => {
+requestsRouter.post('/:id/transition', requireAuth, requireRole(['officer', 'policy_admin']), async (req: Request, res: Response) => {
   const { id } = req.params;
   const { nextStatus, department, remarks } = req.body;
 

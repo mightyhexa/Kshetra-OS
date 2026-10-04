@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Parcel } from '../types';
 import { KshetraMark } from './KshetraMark';
 import { generateParcelPdfReport } from '../services/pdfReportGenerator';
+import { useLanguage } from '../context/LanguageContext';
 import { X, Printer, ShieldCheck, CheckCircle2, QrCode, FileText, Download } from 'lucide-react';
 
 interface DigitalCertificateModalProps {
@@ -15,6 +16,7 @@ export const DigitalCertificateModal: React.FC<DigitalCertificateModalProps> = (
   isOpen,
   onClose
 }) => {
+  const { t } = useLanguage();
   const certificateRef = useRef<HTMLDivElement>(null);
 
   if (!isOpen || !parcel) return null;
@@ -40,30 +42,30 @@ export const DigitalCertificateModal: React.FC<DigitalCertificateModalProps> = (
               <FileText className="w-4 h-4" />
             </span>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Digital Cadastral Certificate Generator</h2>
-              <p className="text-[11px] text-slate-500">Government Form 15 • Digitally Signed & Sealed</p>
+              <h2 className="text-sm font-bold text-slate-900">{t('certGeneratorTitle')}</h2>
+              <p className="text-[11px] text-slate-500">{t('certGeneratorSubtitle')}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => generateParcelPdfReport(parcel)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
-              title="Download official PDF report file"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+              title={t('downloadPdfFile')}
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Download PDF File</span>
+              <span>{t('downloadPdfFile')}</span>
             </button>
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0B3D6E] hover:bg-[#082a4d] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0B3D6E] hover:bg-[#082a4d] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print View</span>
+              <span>{t('printView')}</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1 text-slate-400 hover:text-slate-600 rounded-md"
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-md cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -97,11 +99,11 @@ export const DigitalCertificateModal: React.FC<DigitalCertificateModalProps> = (
           {/* Certificate Identification Bar */}
           <div className="grid grid-cols-2 text-xs border-b border-slate-200 pb-3 gap-2 font-mono">
             <div>
-              <span className="text-slate-500 block text-[10px]">Certificate Docket Number:</span>
+              <span className="text-slate-500 block text-[10px]">{t('certificateDocketNumber')}</span>
               <span className="font-bold text-[#0B3D6E]">{certificateNumber}</span>
             </div>
             <div className="text-right">
-              <span className="text-slate-500 block text-[10px]">Date of Certification:</span>
+              <span className="text-slate-500 block text-[10px]">{t('dateOfCertification')}</span>
               <span className="font-bold text-slate-900">{currentDate}</span>
             </div>
           </div>
@@ -109,27 +111,27 @@ export const DigitalCertificateModal: React.FC<DigitalCertificateModalProps> = (
           {/* Parcel & Ownership Details */}
           <div className="space-y-3 text-xs">
             <h3 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] border-b pb-1">
-              1. Spatial Cadastral Identification (Base Layer)
+              {t('geodeticLayer1Title')}
             </h3>
             <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
               <div>
-                <span className="text-slate-400 block text-[10px]">Bhu-Aadhaar / ULPIN</span>
+                <span className="text-slate-400 block text-[10px]">{t('ulpinLabel')}</span>
                 <span className="font-mono font-bold text-[#0B3D6E]">{parcel.ulpin}</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px]">Survey / Khasra No.</span>
+                <span className="text-slate-400 block text-[10px]">{t('surveyKhasraNo')}</span>
                 <span className="font-bold">{parcel.surveyNumber}</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px]">Registered Extent</span>
+                <span className="text-slate-400 block text-[10px]">{t('registeredExtent')}</span>
                 <span className="font-bold">{parcel.areaSqm} m² ({parcel.areaAcres} Acres)</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px]">Taluk / Sub-District</span>
+                <span className="text-slate-400 block text-[10px]">{t('talukSubDistrict')}</span>
                 <span>{parcel.subDistrictTaluk || parcel.subDistrict}</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[10px]">District & State</span>
+                <span className="text-slate-400 block text-[10px]">{t('district')} & {t('stateCode')}</span>
                 <span>{parcel.district}, {parcel.state}</span>
               </div>
               <div>
@@ -139,39 +141,38 @@ export const DigitalCertificateModal: React.FC<DigitalCertificateModalProps> = (
             </div>
 
             <h3 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] border-b pb-1 pt-2">
-              2. Certified Record of Rights (RoR) & Encumbrance Status
+              {t('rorLayer2Title')}
             </h3>
             <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <span className="text-slate-400 block text-[10px]">Recorded Title Holder</span>
+                  <span className="text-slate-400 block text-[10px]">{t('recordedTitleHolder')}</span>
                   <span className="font-bold text-sm">{parcel.ownership.ownerName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">Tenure Type</span>
+                  <span className="text-slate-400 block text-[10px]">{t('tenureType')}</span>
                   <span className="font-medium">{parcel.ownership.ownershipType} Tenure</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">Conveyance Instrument No.</span>
+                  <span className="text-slate-400 block text-[10px]">{t('conveyanceInstrumentNo')}</span>
                   <span className="font-mono">{parcel.ownership.documentNumber || parcel.ownership.registrationNumber} ({parcel.ownership.registrationDate})</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[10px]">Sub-Registrar Office</span>
+                  <span className="text-slate-400 block text-[10px]">{t('subRegistrarOfficeLabel')}</span>
                   <span>{parcel.ownership.subRegistrarOffice}</span>
                 </div>
               </div>
 
               <div className="pt-2 border-t border-slate-200">
-                <span className="text-slate-400 block text-[10px]">Encumbrance Verification Finding:</span>
+                <span className="text-slate-400 block text-[10px]">{t('encumbranceVerificationFinding')}</span>
                 {parcel.encumbrance.hasMortgage ? (
                   <p className="text-amber-900 font-semibold text-xs mt-0.5">
-                    ⚠️ Active Charge / Mortgage Disclosed on Record: Registered under Charge ID{' '}
-                    {parcel.encumbrance.mortgageDetails?.chargeId || 'REF-CERSAI-0912'}.
+                    ⚠️ {t('activeChargeDisclosed')} {parcel.encumbrance.mortgageDetails?.chargeId || 'REF-CERSAI-0912'}.
                   </p>
                 ) : (
                   <p className="text-emerald-800 font-semibold text-xs mt-0.5 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline" />
-                    Clean Title: Nil Encumbrances or Bank Mortgages found during search period (1996–2026).
+                    {t('cleanTitleNilFound')}
                   </p>
                 )}
               </div>
@@ -183,7 +184,7 @@ export const DigitalCertificateModal: React.FC<DigitalCertificateModalProps> = (
             <div className="space-y-1.5 text-[10px] text-slate-500 font-mono">
               <div className="flex items-center gap-1.5 font-bold text-slate-700 font-sans text-xs">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Digitally Sealed by KSHETRA OS Cryptographic Engine</span>
+                <span>{t('digitallySealedKshetra')}</span>
               </div>
               <div>SHA-256 Ledger Block: #04 • Hash Verified</div>
               <div className="text-[9px] text-slate-400 truncate">
@@ -193,15 +194,15 @@ export const DigitalCertificateModal: React.FC<DigitalCertificateModalProps> = (
 
             <div className="text-right space-y-1">
               <div className="inline-block p-2 bg-slate-100 rounded-lg border border-slate-300 font-mono text-[9px] text-slate-700">
-                [Digitally Signed by Tahsildar]
+                {t('digitallySignedTahsildar')}
                 <br />
                 {currentDate} 11:42:19 IST
               </div>
               <div className="font-bold text-xs text-slate-900">
-                Competent Revenue Authority / SRO
+                {t('competentRevenueAuthority')}
               </div>
               <div className="text-[10px] text-slate-500">
-                Department of Land Resources, Govt of India
+                {t('deptLandResourcesGoI')}
               </div>
             </div>
           </div>

@@ -9,6 +9,7 @@ import { dossierRouter } from './routes/dossier';
 import { eventsRouter } from './routes/events';
 import { healthRouter } from './routes/health';
 import { docsRouter } from './routes/docs';
+import { adminRouter } from './routes/admin';
 import { errorHandler } from './middleware/errors';
 import { repository } from './repo';
 
@@ -29,6 +30,8 @@ export async function createExpressApp() {
   app.use('/api/events', eventsRouter);
   app.use('/api/health', healthRouter);
   app.use('/api/docs', docsRouter);
+  app.use('/api/admin', adminRouter);
+  app.use('/api/selftest', adminRouter);
 
   // Global error handler
   app.use(errorHandler);

@@ -61,6 +61,7 @@ dossierRouter.post('/verify', requireAuth, uploadMiddleware.single('file'), asyn
 
     res.json({
       success: true,
+      data: result,
       ...result
     });
   } catch (err: any) {
@@ -74,4 +75,5 @@ dossierRouter.post('/verify', requireAuth, uploadMiddleware.single('file'), asyn
 // POST /api/dossier/:ulpin & GET /api/dossier/:ulpin
 dossierRouter.post('/:ulpin', requireAuth, handleGenerateDossier);
 dossierRouter.get('/:ulpin', requireAuth, handleGenerateDossier);
+dossierRouter.get('/:ulpin/pdf', requireAuth, handleGenerateDossier);
 

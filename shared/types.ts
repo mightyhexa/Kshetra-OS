@@ -141,16 +141,20 @@ export interface Parcel {
 }
 
 export interface ParcelRiskFlag {
-  code: string;
+  ruleId: string;
   severity: 'high' | 'medium' | 'low';
   title: string;
   reason: string;
-  ruleId: string;
   triggeredFields: string[];
   responsibleOffice: string;
 }
 
 export type ServiceRequestType = 
+  | 'Mutation of Title'
+  | 'Encumbrance Certificate'
+  | 'Change of Land Use'
+  | 'Partition Survey'
+  | 'Form 15 Certificate'
   | 'MUTATION_OF_TITLE'
   | 'ENCUMBRANCE_CERTIFICATE'
   | 'CADASTRAL_DEMARCATION'
@@ -159,6 +163,11 @@ export type ServiceRequestType =
   | 'TAX_RECORD_RECTIFICATION';
 
 export type ServiceRequestStatus = 
+  | 'Applied'
+  | 'Under Review'
+  | 'Cross Verified'
+  | 'Approved'
+  | 'Rejected'
   | 'SUBMITTED'
   | 'UNDER_DEPARTMENTAL_REVIEW'
   | 'CROSS_VERIFIED'

@@ -1,15 +1,115 @@
 @import "tailwindcss";
 
-/* Typography font classes */
-.font-cinzel {
-  font-family: 'Cinzel', serif;
+/* -------------------------------------------------------------
+   KSHETRA OS — "Digital Survey Sheet" Design System Tokens
+   ------------------------------------------------------------- */
+
+@layer base {
+  :root {
+    --color-navy: #0B3D6E;
+    --color-deep-navy: #072A4D;
+    --color-canvas: #F7F8FA;
+    --color-slate-border: #E2E8F0;
+    --color-ink: #0F172A;
+    --color-emerald: #059669;
+    --color-amber: #D97706;
+    --color-rose: #E11D48;
+    --color-saffron: #E8731A;
+  }
+
+  body {
+    font-family: 'Noto Sans', 'Noto Sans Devanagari', 'Noto Sans Kannada', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #0F172A;
+    background-color: #F7F8FA;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Noto Serif', Georgia, Cambria, 'Times New Roman', Times, serif;
+    font-weight: 600;
+    color: #0B3D6E;
+    letter-spacing: -0.015em;
+  }
+
+  code, kbd, samp, pre, .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
 }
 
-.font-rajdhani {
-  font-family: 'Rajdhani', sans-serif;
+/* Faint Survey Grid Pattern (~4% opacity) */
+.survey-grid-canvas {
+  background-color: #F7F8FA;
+  background-image: 
+    linear-gradient(to right, rgba(11, 61, 110, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(11, 61, 110, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
-/* Leaflet Map & Custom Cadastral Styles */
+/* Contour-line texture overlay for login hero */
+.contour-hero-bg {
+  background-color: #072A4D;
+  background-image: radial-gradient(circle at 50% 50%, rgba(232, 115, 26, 0.08) 0%, transparent 60%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.03) 0, rgba(255, 255, 255, 0.03) 1px, transparent 0, transparent 16px);
+}
+
+/* Tricolour Ribbon Hairline Accent */
+.tricolour-ribbon {
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    #E8731A 0%,
+    #E8731A 33.33%,
+    #FFFFFF 33.33%,
+    #FFFFFF 66.66%,
+    #059669 66.66%,
+    #059669 100%
+  );
+}
+
+/* Focus Ring Accessibility Defaults */
+*:focus-visible {
+  outline: 2px solid #0B3D6E;
+  outline-offset: 2px;
+}
+
+/* Accessibility: Font Scaling Options */
+html.text-size-sm {
+  font-size: 14px;
+}
+html.text-size-md {
+  font-size: 15px;
+}
+html.text-size-lg {
+  font-size: 17px;
+}
+
+/* Accessibility: High Contrast Mode */
+html.high-contrast {
+  --color-canvas: #000000;
+  --color-ink: #FFFFFF;
+  --color-slate-border: #FFFFFF;
+}
+html.high-contrast body {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+html.high-contrast .bg-white {
+  background-color: #121212 !important;
+  color: #FFFFFF !important;
+  border-color: #FFFFFF !important;
+}
+html.high-contrast .text-[#0F172A],
+html.high-contrast .text-[#1E293B],
+html.high-contrast .text-[#334155],
+html.high-contrast .text-[#475569] {
+  color: #FFFFFF !important;
+}
+
+/* Leaflet Custom Cadastral Styles */
 .leaflet-container {
   width: 100%;
   height: 100%;
@@ -18,27 +118,26 @@
 }
 
 .leaflet-tooltip {
-  background-color: rgba(255, 255, 255, 0.96) !important;
+  background-color: rgba(255, 255, 255, 0.98) !important;
   border: 1px solid #cbd5e1 !important;
   border-radius: 8px !important;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
   padding: 6px 10px !important;
 }
 
-.leaflet-tooltip-top:before,
-.leaflet-tooltip-bottom:before,
-.leaflet-tooltip-left:before,
-.leaflet-tooltip-right:before {
-  border-top-color: #cbd5e1 !important;
+/* Striped hatch pattern for disputed polygons */
+.court-dispute-hatch {
+  stroke: #E11D48;
+  stroke-width: 2.5;
+  stroke-dasharray: 6, 4;
+  fill-opacity: 0.25;
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
+/* Hide scrollbar utility */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
-
-/* Hide scrollbar for IE, Edge and Firefox */
 .scrollbar-none {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

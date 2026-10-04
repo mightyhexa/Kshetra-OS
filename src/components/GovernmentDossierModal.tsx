@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Parcel, UserRole } from '../types';
 import { KshetraMark } from './KshetraMark';
 import { computeParcelFlags } from '../services/riskEngine';
+import { useLanguage } from '../context/LanguageContext';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { 
@@ -29,6 +30,7 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
   onClose,
   userRole = 'citizen'
 }) => {
+  const { t } = useLanguage();
   const dossierRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -102,14 +104,14 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-slate-900 font-cinzel">
-                  Government Land Record Dossier (Bhu-Aadhaar RoR)
+                  {t('dossierModalTitle')}
                 </h2>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold border border-emerald-200">
-                  Tamper-Evident Standard
+                  {t('tamperEvidentStandard')}
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-rajdhani">
-                Official National Spatial Public Infrastructure • ULPIN {parcel.ulpin}
+                {t('officialDpiSubtitle')} • ULPIN {parcel.ulpin}
               </p>
             </div>
           </div>
@@ -121,19 +123,19 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>{isExporting ? 'Generating PDF...' : 'Download Official PDF'}</span>
+              <span>{isExporting ? t('generatingPdf') : t('downloadOfficialPdf')}</span>
             </button>
             <button
               onClick={handlePrint}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg border border-slate-300 transition-colors"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print</span>
+              <span>{t('print')}</span>
             </button>
             <button
               onClick={onClose}
               className="p-1.5 text-slate-400 hover:text-slate-600 rounded-md"
-              title="Close Preview"
+              title={t('closePreview')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -230,7 +232,7 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
                     </svg>
                   </div>
                   <span className="text-[8px] font-bold text-slate-500 font-mono tracking-tight mt-0.5">
-                    SCAN TO VERIFY
+                    {t('scanToVerify')}
                   </span>
                 </div>
               </div>
@@ -239,7 +241,7 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
               <div className="bg-slate-50 border border-slate-300 rounded-lg p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
                 <div>
                   <span className="text-[10px] text-slate-500 block uppercase font-rajdhani font-semibold">
-                    Unique Land Parcel Identification Number (Bhu-Aadhaar)
+                    {t('bhuAadhaarFullName')}
                   </span>
                   <span className="font-mono font-bold text-sm text-[#0f172a] tracking-wide">
                     {parcel.ulpin}
@@ -248,16 +250,16 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
 
                 <div className="text-right">
                   <span className="text-[10px] text-slate-500 block uppercase font-rajdhani font-semibold">
-                    Cadastral Verification Status
+                    {t('cadastralVerificationStatus')}
                   </span>
                   {isDisputed ? (
                     <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-300">
-                      ⚠️ Active Judicial Litigation Docket
+                      ⚠️ {t('activeJudicialStayOrder')}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 inline" />
-                      Status: VERIFIED CADASTRE
+                      {t('verifiedCadastreStatus')}
                     </span>
                   )}
                 </div>
@@ -267,49 +269,49 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between pb-0.5 border-b border-slate-300">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#0f172a] font-rajdhani">
-                    1. Spatial Geodetic Identification (Base Layer)
+                    {t('geodeticLayer1Title')}
                   </h3>
                   <span className="text-[10px] font-mono text-slate-500">CRS: EPSG:4326 (WGS 84)</span>
                 </div>
 
                 <div className="grid grid-cols-4 border border-slate-300 rounded-md overflow-hidden text-xs">
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-b border-r border-slate-200">
-                    Survey / Khasra No.
+                    {t('surveyKhasraNo')}
                   </div>
                   <div className="bg-white p-2 font-bold text-slate-900 border-b border-r border-slate-200">
                     {parcel.surveyNumber}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-b border-r border-slate-200">
-                    Registered Extent
+                    {t('registeredExtent')}
                   </div>
                   <div className="bg-white p-2 font-bold text-slate-900 border-b border-slate-200">
                     {parcel.areaSqm} m² ({parcel.areaAcres} Acres)
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-b border-r border-slate-200">
-                    State
+                    {t('stateCode')}
                   </div>
-                  <div className="bg-white p-2 font-medium text-slate-900 border-b border-r border-slate-200">
+                  <div className="bg-white p-2 font-medium text-slate-900 border-b border-slate-200">
                     {parcel.state}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-b border-r border-slate-200">
-                    District
+                    {t('district')}
                   </div>
                   <div className="bg-white p-2 font-medium text-slate-900 border-b border-slate-200">
                     {parcel.district}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-r border-slate-200">
-                    Taluk / Sub-District
+                    {t('talukSubDistrict')}
                   </div>
                   <div className="bg-white p-2 font-medium text-slate-900 border-r border-slate-200">
                     {parcel.subDistrictTaluk || parcel.subDistrict}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-r border-slate-200">
-                    Centroid Coordinates
+                    {t('centroidCoordinates')}
                   </div>
                   <div className="bg-white p-2 font-mono text-[11px] text-slate-900">
                     {parcel.centroidLat.toFixed(5)}°N, {parcel.centroidLon.toFixed(5)}°E
@@ -321,37 +323,37 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between pb-0.5 border-b border-slate-300">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#0f172a] font-rajdhani">
-                    2. Record of Rights (RoR) & Title Deeds (Essential Layer)
+                    {t('rorLayer2Title')}
                   </h3>
                   <span className="text-[10px] font-mono text-slate-500">Tenure: {parcel.ownership.ownershipType}</span>
                 </div>
 
                 <div className="grid grid-cols-4 border border-slate-300 rounded-md overflow-hidden text-xs">
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-b border-r border-slate-200">
-                    Primary Title Holder
+                    {t('primaryTitleHolder')}
                   </div>
                   <div className="bg-white p-2 font-bold text-slate-900 border-b border-r border-slate-200 col-span-3">
                     {parcel.ownership.ownerName}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-b border-r border-slate-200">
-                    Co-Sharers / Heirs
+                    {t('coSharersHeirs')}
                   </div>
                   <div className="bg-white p-2 font-medium text-slate-800 border-b border-r border-slate-200 col-span-3">
                     {parcel.ownership.coOwners && parcel.ownership.coOwners.length > 0
                       ? parcel.ownership.coOwners.join(', ')
-                      : 'None recorded (Sole Proprietor)'}
+                      : t('noneRecordedSole')}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-r border-slate-200">
-                    Conveyance Deed No.
+                    {t('conveyanceDeedNo')}
                   </div>
                   <div className="bg-white p-2 font-mono font-bold text-slate-900 border-r border-slate-200">
                     {parcel.ownership.documentNumber || parcel.ownership.registrationNumber}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-r border-slate-200">
-                    Registration Date & SRO
+                    {t('registrationDateSro')}
                   </div>
                   <div className="bg-white p-2 text-slate-900">
                     {parcel.ownership.registrationDate} ({parcel.ownership.subRegistrarOffice})
@@ -363,35 +365,35 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between pb-0.5 border-b border-slate-300">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#0f172a] font-rajdhani">
-                    3. Master Plan Zoning & Encumbrance Status
+                    {t('zoningLayer3Title')}
                   </h3>
                   <span className="text-[10px] font-mono text-slate-500">FAR Allowed: {parcel.zoning.floorAreaRatioAllowed}</span>
                 </div>
 
                 <div className="grid grid-cols-4 border border-slate-300 rounded-md overflow-hidden text-xs">
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-b border-r border-slate-200">
-                    Master Plan Zoning
+                    {t('masterPlanZoningTitle')}
                   </div>
                   <div className="bg-white p-2 font-semibold text-slate-900 border-b border-r border-slate-200">
                     {parcel.zoning.masterPlanClassification}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-b border-r border-slate-200">
-                    Registered Land Use
+                    {t('registeredLandUse')}
                   </div>
                   <div className="bg-white p-2 font-semibold text-slate-900 border-b border-slate-200">
                     {parcel.zoning.registeredLandUse}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-r border-slate-200">
-                    Building Permission
+                    {t('buildingPermission')}
                   </div>
                   <div className="bg-white p-2 text-slate-900 border-r border-slate-200">
                     {parcel.zoning.buildingPermissionStatus} (Max Height: {parcel.zoning.maxBuildingHeightMeters || 15}m)
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-r border-slate-200">
-                    Bank Encumbrance / Charge
+                    {t('bankEncumbranceCharge')}
                   </div>
                   <div className="bg-white p-2 text-slate-900 font-medium">
                     {parcel.encumbrance.hasMortgage ? (
@@ -400,10 +402,10 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
                           Active: INR {parcel.encumbrance.mortgageDetails.loanAmountInr.toLocaleString('en-IN')} ({parcel.encumbrance.mortgageDetails.lenderName})
                         </span>
                       ) : (
-                        <span className="text-amber-800 font-bold">Active Mortgage Charge Disclosed</span>
+                        <span className="text-amber-800 font-bold">{t('activeMortgageDisclosed')}</span>
                       )
                     ) : (
-                      <span className="text-emerald-700 font-semibold">Clean Title • Nil Encumbrances</span>
+                      <span className="text-emerald-700 font-semibold">{t('cleanTitleNil')}</span>
                     )}
                   </div>
                 </div>
@@ -413,7 +415,7 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between pb-0.5 border-b border-slate-300">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#0f172a] font-rajdhani">
-                    4. Municipal Fiscal Demand & Public Utilities (Additional Layer)
+                    {t('fiscalLayer4Title')}
                   </h3>
                   <span className="text-[10px] font-mono text-slate-500">Tax Status: {parcel.tax.taxStatus}</span>
                 </div>
@@ -421,31 +423,31 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
                 <div className="grid grid-cols-4 border border-slate-300 rounded-md overflow-hidden text-xs">
                   {/* Property Tax Assessment No. with break-all to prevent any overlap bug */}
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-b border-r border-slate-200">
-                    Tax Assessment PID
+                    {t('assessmentPid')}
                   </div>
                   <div className="bg-white p-2 font-mono font-bold text-slate-900 border-b border-r border-slate-200 break-all">
                     {parcel.tax.propertyTaxAssessmentNo}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-b border-r border-slate-200">
-                    Tax Status & Demand
+                    {t('taxStatusDemand')}
                   </div>
                   <div className="bg-white p-2 font-medium text-slate-900 border-b border-slate-200">
                     {parcel.tax.taxStatus} (Demand: ₹{parcel.tax.annualTaxDemandInr.toLocaleString('en-IN')})
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-r border-slate-200">
-                    Electricity Consumer ID
+                    {t('electricityConsumerId')}
                   </div>
                   <div className="bg-white p-2 font-mono text-slate-900 border-r border-slate-200">
                     {parcel.tax.electricityConsumerNo || 'DISCOM-BULK-01'}
                   </div>
 
                   <div className="bg-slate-100 p-2 font-semibold text-slate-600 border-r border-slate-200">
-                    Road Access ROW Width
+                    {t('roadAccessRowWidth')}
                   </div>
                   <div className="bg-white p-2 font-medium text-slate-900">
-                    Public Arterial Right-of-Way
+                    {t('publicArterialRow')}
                   </div>
                 </div>
               </div>
@@ -454,11 +456,11 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
               {flags.length > 0 && (
                 <div className="p-2.5 bg-rose-50/60 border border-rose-200 rounded-md text-xs space-y-1">
                   <div className="font-bold text-rose-900 flex items-center gap-1.5 text-[11px]">
-                    <span>⚠️ CADASTRAL RISK ANOMALY FLAGS ({flags.length} DETECTED):</span>
+                    <span>⚠️ {t('cadastralRiskAnomalies')} ({flags.length}):</span>
                   </div>
                   {flags.map((f) => (
-                    <div key={f.code} className="text-[11px] text-rose-800">
-                      <strong>[{f.code}] {f.title}:</strong> {f.reason}
+                    <div key={f.ruleId} className="text-[11px] text-rose-800">
+                      <strong>[{f.ruleId}] {f.title}:</strong> {f.reason}
                     </div>
                   ))}
                 </div>
@@ -471,7 +473,7 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
                   <div className="space-y-1">
                     <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded text-[10px] font-bold">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Digitally Signed by NSDI Cadastral Authority</span>
+                      <span>{t('digitallySignedNsdi')}</span>
                     </div>
                     <div className="font-mono text-[9px] text-slate-500 break-all leading-tight">
                       SHA-256 Digest: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
@@ -484,13 +486,13 @@ export const GovernmentDossierModal: React.FC<GovernmentDossierModalProps> = ({
                   {/* Right: Revenue Department Seal */}
                   <div className="text-right space-y-0.5">
                     <div className="text-xs font-bold text-slate-900 uppercase font-cinzel">
-                      Competent Revenue Authority
+                      {t('competentRevenueAuthority')}
                     </div>
                     <div className="text-[10px] text-slate-500 font-rajdhani">
-                      Department of Land Records & Survey • Ministry of Rural Development
+                      {t('deptLandRecordsSurvey')}
                     </div>
                     <div className="text-[9px] font-mono text-emerald-700 font-semibold">
-                      [Electronic Signature Verified • 2048-Bit RSA]
+                      {t('electronicSignatureVerified')}
                     </div>
                   </div>
                 </div>

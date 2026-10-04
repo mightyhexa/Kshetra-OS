@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { UserRole } from '../types';
 import { 
   X, 
@@ -30,6 +31,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onOpenLogin
 }) => {
   const { currentUser, currentRole, switchRole, updateProfile, sessionToken, logout } = useAuth();
+  const { t } = useLanguage();
 
   const [fullName, setFullName] = useState(currentUser.fullName);
   const [email, setEmail] = useState(currentUser.email);
@@ -50,7 +52,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       jurisdictionDistrict,
       twoFactorEnabled
     });
-    setSaveSuccessNotice('User profile credentials updated successfully.');
+    setSaveSuccessNotice(t('profileUpdatedSuccess'));
     setTimeout(() => setSaveSuccessNotice(null), 3000);
   };
 
@@ -74,8 +76,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               {currentUser.fullName.charAt(0)}
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">User Profile & Access Management</h2>
-              <p className="text-xs text-slate-500">Government Portal Single Sign-On (SSO)</p>
+              <h2 className="text-sm font-bold text-slate-900">{t('userProfileTitle')}</h2>
+              <p className="text-xs text-slate-500">{t('userProfileSubtitle')}</p>
             </div>
           </div>
           <button
@@ -96,7 +98,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         {/* Role Selector Cards */}
         <div className="space-y-1.5">
           <span className="text-xs font-semibold text-slate-600 block">
-            Select Active Profile Role (Demo Elevation):
+            {t('profileRoleElevation')}
           </span>
           <div className="grid grid-cols-3 gap-2 text-xs">
             <button
@@ -108,8 +110,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
               }`}
             >
-              <div className="font-bold">Citizen</div>
-              <div className="text-[10px] text-slate-500 font-normal">Public Registry</div>
+              <div className="font-bold">{t('roleCitizen')}</div>
+              <div className="text-[10px] text-slate-500 font-normal">{t('roleCitizenDesc')}</div>
             </button>
 
             <button
@@ -121,8 +123,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
               }`}
             >
-              <div className="font-bold">Land Officer</div>
-              <div className="text-[10px] text-slate-500 font-normal">Tahsildar / RoR</div>
+              <div className="font-bold">{t('roleOfficer')}</div>
+              <div className="text-[10px] text-slate-500 font-normal">{t('roleOfficerDesc')}</div>
             </button>
 
             <button
@@ -134,8 +136,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
               }`}
             >
-              <div className="font-bold">Policy Admin</div>
-              <div className="text-[10px] text-slate-500 font-normal">MoRD / NSDI</div>
+              <div className="font-bold">{t('roleAdmin')}</div>
+              <div className="text-[10px] text-slate-500 font-normal">{t('roleAdminDesc')}</div>
             </button>
           </div>
         </div>
@@ -144,7 +146,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         <form onSubmit={handleSaveProfile} className="space-y-3.5 text-xs">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-600 font-semibold mb-1">Full Name</label>
+              <label className="block text-slate-600 font-semibold mb-1">{t('fullNameLabel')}</label>
               <input
                 type="text"
                 value={fullName}
@@ -154,7 +156,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-slate-600 font-semibold mb-1">Government Aadhaar ID</label>
+              <label className="block text-slate-600 font-semibold mb-1">{t('aadhaarIdLabel')}</label>
               <input
                 type="text"
                 value={currentUser.aadhaarMasked}
@@ -167,7 +169,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-600 font-semibold mb-1">Official Email</label>
+              <label className="block text-slate-600 font-semibold mb-1">{t('officialEmailLabel')}</label>
               <input
                 type="email"
                 value={email}
@@ -177,7 +179,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-slate-600 font-semibold mb-1">Mobile Phone (2FA)</label>
+              <label className="block text-slate-600 font-semibold mb-1">{t('mobilePhoneLabel')}</label>
               <input
                 type="text"
                 value={phone}
@@ -190,7 +192,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-600 font-semibold mb-1">Designated District</label>
+              <label className="block text-slate-600 font-semibold mb-1">{t('designatedDistrictLabel')}</label>
               <input
                 type="text"
                 value={jurisdictionDistrict}
@@ -199,7 +201,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-slate-600 font-semibold mb-1">Designated State</label>
+              <label className="block text-slate-600 font-semibold mb-1">{t('designatedStateLabel')}</label>
               <input
                 type="text"
                 value={currentUser.jurisdictionState}
@@ -213,8 +215,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
             <div className="flex items-center justify-between">
               <div>
-                <span className="font-semibold text-slate-800 block">Two-Factor Authentication (2FA)</span>
-                <span className="text-[11px] text-slate-500">Require OTP on sign-in and deed mutations</span>
+                <span className="font-semibold text-slate-800 block">{t('twoFactorAuthLabel')}</span>
+                <span className="text-[11px] text-slate-500">{t('twoFactorAuthDesc')}</span>
               </div>
               <input
                 type="checkbox"
@@ -228,14 +230,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           {/* Session Token & API Auth Header */}
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 font-mono text-[10px]">
             <div className="flex items-center justify-between text-slate-500">
-              <span className="font-sans font-semibold text-slate-700">Active Bearer Token:</span>
+              <span className="font-sans font-semibold text-slate-700">{t('activeBearerTokenLabel')}</span>
               <button
                 type="button"
                 onClick={handleCopyToken}
                 className="text-[#0B3D6E] hover:underline font-sans font-semibold flex items-center gap-1"
               >
                 {copiedToken ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                <span>{copiedToken ? 'Copied' : 'Copy Token'}</span>
+                <span>{copiedToken ? t('copied') : t('copyTokenBtn')}</span>
               </button>
             </div>
             <div className="bg-white p-2 rounded border border-slate-200 text-slate-700 truncate">
@@ -255,7 +257,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               className="inline-flex items-center gap-1.5 text-xs text-rose-700 hover:text-rose-900 font-semibold"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Switch Account / Sign Out</span>
+              <span>{t('switchAccountSignOut')}</span>
             </button>
 
             <button
@@ -263,7 +265,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0B3D6E] hover:bg-[#082a4d] text-white text-xs font-semibold rounded-lg shadow-sm"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>Save Profile Changes</span>
+              <span>{t('saveProfileChangesBtn')}</span>
             </button>
           </div>
         </form>

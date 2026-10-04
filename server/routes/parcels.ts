@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireRole } from '../middleware/auth';
 import { validateQuery } from '../middleware/validate';
 import { repository } from '../repo';
 import { serializeParcel } from '../services/serializers';
@@ -63,6 +63,33 @@ parcelsRouter.get('/', requireAuth, validateQuery(QuerySchema), async (req: Requ
     page: result.page,
     totalPages: result.totalPages,
     data: serializedItems
+  });
+});
+
+// GET /api/parcels/risks/registry (Officer and Admin only risk registry)
+parcelsRouter.get('/risks/registry', requireAuth, requireRole(['officer', 'policy_admin']), async (req: Request, res: Response) => {
+  const allParcels = (await repository.getParcels({ limit: 100 })).items;
+  const waterbodies = await repository.getWaterbodies();
+  const role = req.user!.role;
+
+  const registry: any[] = [];
+  for (const parcel of allParcels) {
+    const findings = evaluateParcelRisks(parcel, allParcels, waterbodies, role);
+    for (const finding of findings) {
+      registry.push({
+        parcelUlpin: parcel.ulpin,
+        displayUlpin: parcel.displayUlpin,
+        district: parcel.district,
+        surveyNumber: parcel.surveyNumber,
+        finding
+      });
+    }
+  }
+
+  res.json({
+    success: true,
+    totalFindings: registry.length,
+    data: registry
   });
 });
 

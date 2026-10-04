@@ -58,7 +58,6 @@ export function checkR6DuplicateSale(parcel: Parcel): RiskRuleFinding | null {
   if (diffDays <= config.DUPLICATE_SALE_DAYS) {
     return {
       ruleId: 'R6',
-      code: 'DUPLICATE_CONVEYANCE_90D',
       severity: 'rose',
       plainReason: `Multiple registered conveyances executed to different buyers within ${diffDays} days (${first.buyerName} and ${last.buyerName}), signaling severe duplicate sale risk.`,
       params: {
@@ -96,7 +95,6 @@ export function checkR7LienDiscrepancy(parcel: Parcel): RiskRuleFinding | null {
   if (activeCersai && !hasSroMortgage) {
     return {
       ruleId: 'R7',
-      code: 'CERSAI_UNDISCLOSED_MORTGAGE',
       severity: 'amber',
       plainReason: `A cross-registry lien discrepancy was detected: CERSAI registers an active ₹${activeCersai.sanctionAmountInr.toLocaleString('en-IN')} charge with ${activeCersai.financialInstitution}, but the Sub-Registrar encumbrance certificate reports Nil mortgage.`,
       params: {
@@ -150,7 +148,6 @@ export function checkR8TaxArrears(parcel: Parcel): RiskRuleFinding | null {
 
   return {
     ruleId: 'R8',
-    code: 'STALE_TAX_DEFAULT',
     severity: isStale ? 'amber' : 'info',
     plainReason: isStale
       ? `Property tax assessment is stale with outstanding municipal dues of ₹${parcel.tax.annualTaxDemandInr.toLocaleString('en-IN')} pending since financial year ${parcel.tax.assessmentYear}.`
